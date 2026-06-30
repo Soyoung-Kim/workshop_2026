@@ -5,6 +5,9 @@ import {
   SelectHTMLAttributes,
   TextareaHTMLAttributes,
 } from "react";
+import { AlertTriangle, CheckCircle2, Info, XCircle } from "lucide-react";
+
+export type NoticeTone = "neutral" | "success" | "warning" | "error";
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: "primary" | "secondary" | "danger";
@@ -52,7 +55,7 @@ export function TextArea(props: TextareaHTMLAttributes<HTMLTextAreaElement>) {
   );
 }
 
-export function Notice({ tone = "neutral", children }: { tone?: "neutral" | "success" | "warning" | "error"; children: ReactNode }) {
+export function Notice({ tone = "neutral", children }: { tone?: NoticeTone; children: ReactNode }) {
   const tones = {
     neutral: "border-zinc-200 bg-white text-zinc-700",
     success: "border-teal-200 bg-teal-50 text-teal-900",
@@ -61,4 +64,41 @@ export function Notice({ tone = "neutral", children }: { tone?: "neutral" | "suc
   };
 
   return <div className={`rounded-md border px-4 py-3 text-sm font-medium ${tones[tone]}`}>{children}</div>;
+}
+
+export function Toast({ tone = "success", children }: { tone?: NoticeTone; children: ReactNode }) {
+  const tones = {
+    neutral: {
+      box: "border-zinc-200 bg-white text-zinc-900",
+      icon: "text-zinc-600",
+      Icon: Info,
+    },
+    success: {
+      box: "border-teal-300 bg-teal-50 text-teal-950",
+      icon: "text-teal-700",
+      Icon: CheckCircle2,
+    },
+    warning: {
+      box: "border-amber-300 bg-amber-50 text-amber-950",
+      icon: "text-amber-700",
+      Icon: AlertTriangle,
+    },
+    error: {
+      box: "border-rose-300 bg-rose-50 text-rose-950",
+      icon: "text-rose-700",
+      Icon: XCircle,
+    },
+  };
+  const { Icon, box, icon } = tones[tone];
+
+  return (
+    <div
+      className={`fixed right-4 top-4 z-50 flex w-[calc(100%-2rem)] max-w-md items-start gap-3 rounded-lg border px-4 py-4 text-base font-bold shadow-soft sm:right-6 sm:top-6 ${box}`}
+      role="status"
+      aria-live="polite"
+    >
+      <Icon className={`mt-0.5 h-5 w-5 shrink-0 ${icon}`} aria-hidden="true" />
+      <div className="min-w-0 break-words leading-6">{children}</div>
+    </div>
+  );
 }

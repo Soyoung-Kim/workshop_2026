@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Save, Search, RotateCcw } from "lucide-react";
 import { PageShell } from "../components/PageShell";
-import { Button, Notice, SelectInput, TextArea, TextInput } from "../components/ui";
+import { Button, Notice, NoticeTone, SelectInput, TextArea, TextInput, Toast } from "../components/ui";
 import { rpcErrorMessage, supabase } from "../lib/supabase";
 import { BootstrapData, SubmissionPayload } from "../types";
 
@@ -17,11 +17,21 @@ export function ParticipantPage() {
   const [answerTwo, setAnswerTwo] = useState("");
   const [foundSubmission, setFoundSubmission] = useState<SubmissionPayload | null>(null);
   const [status, setStatus] = useState<{ tone: "success" | "warning" | "error"; text: string } | null>(null);
+  const [toast, setToast] = useState<{ tone: NoticeTone; text: string; key: number } | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     loadBootstrap();
   }, []);
+
+  useEffect(() => {
+    if (!toast) {
+      return;
+    }
+
+    const timeout = window.setTimeout(() => setToast(null), 3500);
+    return () => window.clearTimeout(timeout);
+  }, [toast]);
 
   const selectedDepartment = useMemo(
     () => bootstrap?.departments.find((department) => department.id === departmentId) ?? null,
@@ -74,11 +84,13 @@ export function ParticipantPage() {
     setAnswerOne(submission?.answerOne ?? "");
     setAnswerTwo(submission?.answerTwo ?? "");
     setStep("editor");
-    setStatus(
-      submission
-        ? { tone: "success", text: "기존 답변을 불러왔습니다." }
-        : { tone: "success", text: "새 답변을 작성합니다." },
-    );
+    if (submission) {
+      const message = "이전 작성 내용이 있습니다. 이전 작성 내용을 불러옵니다.";
+      setStatus({ tone: "success", text: message });
+      setToast({ tone: "success", text: message, key: Date.now() });
+    } else {
+      setStatus({ tone: "success", text: "새 답변을 작성합니다." });
+    }
   }
 
   async function handleSave(event: FormEvent<HTMLFormElement>) {
@@ -109,10 +121,9 @@ export function ParticipantPage() {
     }
 
     setFoundSubmission(data as SubmissionPayload);
-    setStatus({
-      tone: "success",
-      text: foundSubmission ? "수정 내용이 저장되었습니다." : "답변이 제출되었습니다.",
-    });
+    const message = foundSubmission ? "수정 내용이 저장되었습니다." : "저장되었습니다.";
+    setStatus({ tone: "success", text: message });
+    setToast({ tone: "success", text: message, key: Date.now() });
     await loadBootstrap();
   }
 
@@ -122,6 +133,7 @@ export function ParticipantPage() {
       title={bootstrap?.event.title ?? "우리 팀은 어떤 팀인가?"}
       settings={bootstrap?.settings}
     >
+      {toast ? <Toast key={toast.key} tone={toast.tone}>{toast.text}</Toast> : null}
       <div className="grid gap-5 lg:grid-cols-[360px_1fr]">
         <section className="rounded-lg border border-zinc-200 bg-white p-5 shadow-soft">
           <div className="mb-4 flex items-center justify-between gap-3">
