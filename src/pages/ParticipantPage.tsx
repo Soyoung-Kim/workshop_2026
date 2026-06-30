@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Save, Search, RotateCcw } from "lucide-react";
 import { PageShell } from "../components/PageShell";
 import { Button, Notice, NoticeTone, SelectInput, TextArea, TextInput, Toast } from "../components/ui";
+import { AnswerKind, getAnswerPhrase } from "../lib/answers";
 import { rpcErrorMessage, supabase } from "../lib/supabase";
 import { BootstrapData, SubmissionPayload } from "../types";
 
@@ -81,8 +82,8 @@ export function ParticipantPage() {
 
     const submission = data as SubmissionPayload | null;
     setFoundSubmission(submission);
-    setAnswerOne(submission?.answerOne ?? "");
-    setAnswerTwo(submission?.answerTwo ?? "");
+    setAnswerOne(getAnswerPhrase(submission?.answerOne ?? "", "teamLike"));
+    setAnswerTwo(getAnswerPhrase(submission?.answerTwo ?? "", "withoutTeam"));
     setStep("editor");
     if (submission) {
       const message = "이전 작성 내용이 있습니다. 이전 작성 내용을 불러옵니다.";
@@ -101,7 +102,10 @@ export function ParticipantPage() {
       return;
     }
 
-    if (!answerOne.trim() || !answerTwo.trim()) {
+    const answerOnePhrase = getAnswerPhrase(answerOne, "teamLike");
+    const answerTwoPhrase = getAnswerPhrase(answerTwo, "withoutTeam");
+
+    if (!answerOnePhrase || !answerTwoPhrase) {
       setStatus({ tone: "warning", text: "두 문항을 모두 입력해주세요." });
       return;
     }
@@ -110,8 +114,8 @@ export function ParticipantPage() {
     const { data, error } = await supabase.rpc("ws_upsert_submission", {
       p_department_id: departmentId,
       p_participant_name: participantName.trim(),
-      p_answer_one: answerOne.trim(),
-      p_answer_two: answerTwo.trim(),
+      p_answer_one: answerOnePhrase,
+      p_answer_two: answerTwoPhrase,
     });
     setSubmitting(false);
 
@@ -121,6 +125,8 @@ export function ParticipantPage() {
     }
 
     setFoundSubmission(data as SubmissionPayload);
+    setAnswerOne(answerOnePhrase);
+    setAnswerTwo(answerTwoPhrase);
     const message = foundSubmission ? "수정 내용이 저장되었습니다." : "저장되었습니다.";
     setStatus({ tone: "success", text: message });
     setToast({ tone: "success", text: message, key: Date.now() });
@@ -208,28 +214,22 @@ export function ParticipantPage() {
             </div>
           ) : (
             <form className="space-y-5" onSubmit={handleSave}>
-              <label className="block space-y-2">
-                <span className="text-sm font-bold text-zinc-700">우리 팀은 _________ 같다.</span>
-                <TextArea
-                  value={answerOne}
-                  disabled={bootstrap?.settings.submissionClosed}
-                  onChange={(event) => setAnswerOne(event.target.value)}
-                  placeholder="예: 우리 팀은 와이파이 같다. 보이지 않아도 모두의 연결을 지켜준다."
-                  maxLength={800}
-                />
-              </label>
-              <label className="block space-y-2">
-                <span className="text-sm font-bold text-zinc-700">
-                  우리 팀이 없다면 _________ 될 것이다.
-                </span>
-                <TextArea
-                  value={answerTwo}
-                  disabled={bootstrap?.settings.submissionClosed}
-                  onChange={(event) => setAnswerTwo(event.target.value)}
-                  placeholder="예: 우리 팀이 없다면 방향을 잃고 같은 문제를 반복하게 될 것이다."
-                  maxLength={800}
-                />
-              </label>
+              <AnswerPhraseField
+                kind="teamLike"
+                label="우리 팀은 _________ 같다."
+                value={answerOne}
+                disabled={bootstrap?.settings.submissionClosed}
+                onChange={setAnswerOne}
+                placeholder="예: 와이파이"
+              />
+              <AnswerPhraseField
+                kind="withoutTeam"
+                label="우리 팀이 없다면 _________ 될 것이다."
+                value={answerTwo}
+                disabled={bootstrap?.settings.submissionClosed}
+                onChange={setAnswerTwo}
+                placeholder="예: 방향을 잃고 같은 문제를 반복하게"
+              />
               <Button className="w-full sm:w-auto" type="submit" disabled={submitting || bootstrap?.settings.submissionClosed}>
                 <Save className="h-4 w-4" aria-hidden="true" />
                 {foundSubmission ? "수정 저장하기" : "제출하기"}
@@ -239,5 +239,55 @@ export function ParticipantPage() {
         </section>
       </div>
     </PageShell>
+  );
+}
+
+function AnswerPhraseField({
+  kind,
+  label,
+  value,
+  disabled,
+  onChange,
+  placeholder,
+}: {
+  kind: AnswerKind;
+  label: string;
+  value: string;
+  disabled?: boolean;
+  onChange: (value: string) => void;
+  placeholder: string;
+}) {
+  const phrase = getAnswerPhrase(value, kind);
+  const template =
+    kind === "teamLike"
+      ? { before: "우리 팀은 ", after: " 같다." }
+      : { before: "우리 팀이 없다면 ", after: " 될 것이다." };
+
+  return (
+    <label className="block space-y-2">
+      <span className="text-sm font-bold text-zinc-700">{label}</span>
+      <div className="rounded-md border border-zinc-200 bg-zinc-50 p-4">
+        <p className="mb-3 min-h-8 break-words text-base font-semibold leading-7 text-zinc-800">
+          {phrase ? (
+            <>
+              {template.before}
+              <span className="rounded bg-amber-100 px-1.5 py-0.5 font-black text-amber-950 ring-1 ring-amber-200">
+                {phrase}
+              </span>
+              {template.after}
+            </>
+          ) : (
+            <span className="text-zinc-400">{label}</span>
+          )}
+        </p>
+        <TextArea
+          value={value}
+          disabled={disabled}
+          onChange={(event) => onChange(event.target.value)}
+          placeholder={placeholder}
+          maxLength={400}
+        />
+      </div>
+    </label>
   );
 }
