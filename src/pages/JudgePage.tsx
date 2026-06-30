@@ -130,7 +130,7 @@ export function JudgePage() {
                 <TextInput
                   value={tokenInput}
                   onChange={(event) => setTokenInput(event.target.value)}
-                  placeholder="judge-song"
+                  placeholder="토큰을 입력하세요"
                   autoComplete="off"
                 />
               </label>

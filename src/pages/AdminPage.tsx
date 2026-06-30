@@ -18,10 +18,19 @@ export function AdminPage() {
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState<{ tone: "success" | "warning" | "error"; text: string } | null>(null);
 
-  const maxVotes = useMemo(
-    () => Math.max(0, ...(overview?.results.map((submission) => submission.voteCount) ?? [0])),
-    [overview?.results],
-  );
+  const selectedJudgeResults = useMemo(() => {
+    if (!overview) {
+      return [];
+    }
+
+    return overview.judges
+      .filter((judge) => judge.selectedSubmissionId)
+      .map((judge) => ({
+        judge,
+        submission:
+          overview.submissions.find((submission) => submission.id === judge.selectedSubmissionId) ?? null,
+      }));
+  }, [overview]);
 
   async function loadOverview(nextPassword = password) {
     setLoading(true);
@@ -189,45 +198,50 @@ export function AdminPage() {
                   CSV 다운로드
                 </Button>
               </div>
-              <div className="overflow-x-auto">
-                <table className="min-w-full border-separate border-spacing-0 text-left text-sm">
-                  <thead>
-                    <tr className="text-zinc-500">
-                      <Th>순위</Th>
-                      <Th>이름</Th>
-                      <Th>팀</Th>
-                      <Th>득표</Th>
-                      <Th>답변</Th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {overview.results.map((submission, index) => (
-                      <tr key={submission.id} className="align-top">
-                        <Td>
-                          <span
-                            className={`rounded px-2 py-1 text-xs font-bold ${
-                              submission.voteCount > 0 && submission.voteCount === maxVotes
-                                ? "bg-teal-100 text-teal-800"
-                                : "bg-zinc-100 text-zinc-700"
-                            }`}
-                          >
-                            {index + 1}
-                          </span>
-                        </Td>
-                        <Td>{submission.participantName}</Td>
-                        <Td>{submission.departmentName}</Td>
-                        <Td>{submission.voteCount}</Td>
-                        <Td>
-                          <div className="max-w-xl space-y-2">
-                            <p className="break-words">{submission.answerOne}</p>
-                            <p className="break-words text-zinc-500">{submission.answerTwo}</p>
-                          </div>
-                        </Td>
+              {selectedJudgeResults.length === 0 ? (
+                <Notice tone="warning">아직 선택한 심사자가 없습니다.</Notice>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full border-separate border-spacing-0 text-left text-sm">
+                    <thead>
+                      <tr className="text-zinc-500">
+                        <Th>심사자</Th>
+                        <Th>선택 팀</Th>
+                        <Th>작성자</Th>
+                        <Th>선택 답변</Th>
+                        <Th>선택 시간</Th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {selectedJudgeResults.map(({ judge, submission }) => (
+                        <tr key={judge.id} className="align-top">
+                          <Td>
+                            <div>
+                              <p className="font-bold text-zinc-950">
+                                {judge.name} {judge.role}
+                              </p>
+                              <p className="text-xs font-semibold text-zinc-500">{judge.token}</p>
+                            </div>
+                          </Td>
+                          <Td>{submission?.departmentName ?? judge.selectedDepartment ?? "-"}</Td>
+                          <Td>{submission?.participantName ?? "-"}</Td>
+                          <Td>
+                            {submission ? (
+                              <div className="max-w-xl space-y-2">
+                                <p className="break-words">{submission.answerOne}</p>
+                                <p className="break-words text-zinc-500">{submission.answerTwo}</p>
+                              </div>
+                            ) : (
+                              <span className="text-zinc-500">답변 정보를 찾을 수 없습니다.</span>
+                            )}
+                          </Td>
+                          <Td>{formatKoreanDateTime(judge.votedAt)}</Td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </section>
 
             <section className="grid gap-5 lg:grid-cols-[1fr_1.4fr]">
