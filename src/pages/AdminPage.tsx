@@ -1,7 +1,7 @@
 import { FormEvent, ReactNode, useMemo, useState } from "react";
 import { Download, LockKeyhole, RefreshCw, Save } from "lucide-react";
 import { PageShell } from "../components/PageShell";
-import { Button, Notice, TextInput } from "../components/ui";
+import { Button, Notice, SelectInput, TextInput } from "../components/ui";
 import { downloadCsv } from "../lib/csv";
 import { formatKoreanDateTime, fromDateTimeLocal, toDateTimeLocal } from "../lib/date";
 import { rpcErrorMessage, supabase } from "../lib/supabase";
@@ -16,6 +16,7 @@ export function AdminPage() {
   const [voteDeadline, setVoteDeadline] = useState("");
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [resultDepartmentFilter, setResultDepartmentFilter] = useState("all");
   const [status, setStatus] = useState<{ tone: "success" | "warning" | "error"; text: string } | null>(null);
 
   const selectedJudgeResults = useMemo(() => {
@@ -31,6 +32,14 @@ export function AdminPage() {
           overview.submissions.find((submission) => submission.id === judge.selectedSubmissionId) ?? null,
       }));
   }, [overview]);
+
+  const filteredSelectedJudgeResults = useMemo(() => {
+    if (resultDepartmentFilter === "all") {
+      return selectedJudgeResults;
+    }
+
+    return selectedJudgeResults.filter(({ submission }) => submission?.departmentId === resultDepartmentFilter);
+  }, [resultDepartmentFilter, selectedJudgeResults]);
 
   async function loadOverview(nextPassword = password) {
     setLoading(true);
@@ -193,13 +202,31 @@ export function AdminPage() {
             <section className="rounded-lg border border-zinc-200 bg-white p-5 shadow-soft">
               <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <h2 className="text-lg font-bold text-zinc-950">결과집계</h2>
-                <Button type="button" variant="secondary" onClick={exportSubmissions}>
-                  <Download className="h-4 w-4" aria-hidden="true" />
-                  CSV 다운로드
-                </Button>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                  <label className="grid gap-2 sm:w-48">
+                    <span className="text-sm font-bold text-zinc-700">팀별 필터</span>
+                    <SelectInput
+                      value={resultDepartmentFilter}
+                      onChange={(event) => setResultDepartmentFilter(event.target.value)}
+                    >
+                      <option value="all">전체</option>
+                      {overview.departments.map((department) => (
+                        <option key={department.id} value={department.id}>
+                          {department.name}
+                        </option>
+                      ))}
+                    </SelectInput>
+                  </label>
+                  <Button type="button" variant="secondary" onClick={exportSubmissions}>
+                    <Download className="h-4 w-4" aria-hidden="true" />
+                    CSV 다운로드
+                  </Button>
+                </div>
               </div>
               {selectedJudgeResults.length === 0 ? (
                 <Notice tone="warning">아직 선택한 심사자가 없습니다.</Notice>
+              ) : filteredSelectedJudgeResults.length === 0 ? (
+                <Notice tone="warning">선택한 팀의 심사 결과가 없습니다.</Notice>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="min-w-full border-separate border-spacing-0 text-left text-sm">
@@ -213,7 +240,7 @@ export function AdminPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {selectedJudgeResults.map(({ judge, submission }) => (
+                      {filteredSelectedJudgeResults.map(({ judge, submission }) => (
                         <tr key={judge.id} className="align-top">
                           <Td>
                             <div>
@@ -255,7 +282,6 @@ export function AdminPage() {
                           <p className="font-bold text-zinc-950">
                             {judge.name} {judge.role}
                           </p>
-                          <p className="text-xs font-semibold text-zinc-500">{judge.token}</p>
                         </div>
                         <span
                           className={`rounded px-2 py-1 text-xs font-bold ${

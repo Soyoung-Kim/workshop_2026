@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { KeyRound, Save, ShieldCheck } from "lucide-react";
 import { PageShell } from "../components/PageShell";
-import { Button, Notice, TextInput } from "../components/ui";
+import { Button, Notice, SelectInput, TextInput } from "../components/ui";
 import { rpcErrorMessage, supabase } from "../lib/supabase";
 import { JudgeViewData } from "../types";
 
@@ -11,6 +11,7 @@ export function JudgePage() {
   const [tokenInput, setTokenInput] = useState(initialToken);
   const [view, setView] = useState<JudgeViewData | null>(null);
   const [selectedSubmissionId, setSelectedSubmissionId] = useState("");
+  const [departmentFilter, setDepartmentFilter] = useState("all");
   const [loading, setLoading] = useState(Boolean(initialToken));
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState<{ tone: "success" | "warning" | "error"; text: string } | null>(null);
@@ -22,6 +23,23 @@ export function JudgePage() {
 
     loadView(initialToken);
   }, [initialToken]);
+
+  const judgeDepartments = useMemo(() => {
+    const names = new Set(view?.submissions.map((submission) => submission.departmentName) ?? []);
+    return Array.from(names).sort((a, b) => a.localeCompare(b, "ko-KR"));
+  }, [view?.submissions]);
+
+  const filteredSubmissions = useMemo(() => {
+    if (!view) {
+      return [];
+    }
+
+    if (departmentFilter === "all") {
+      return view.submissions;
+    }
+
+    return view.submissions.filter((submission) => submission.departmentName === departmentFilter);
+  }, [departmentFilter, view]);
 
   async function loadView(nextToken: string) {
     setLoading(true);
@@ -143,13 +161,33 @@ export function JudgePage() {
         ) : null}
 
         <section className="space-y-3">
+          {view ? (
+            <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-soft">
+              <label className="grid gap-2 sm:max-w-xs">
+                <span className="text-sm font-bold text-zinc-700">팀별 필터</span>
+                <SelectInput
+                  value={departmentFilter}
+                  onChange={(event) => setDepartmentFilter(event.target.value)}
+                >
+                  <option value="all">전체</option>
+                  {judgeDepartments.map((departmentName) => (
+                    <option key={departmentName} value={departmentName}>
+                      {departmentName}
+                    </option>
+                  ))}
+                </SelectInput>
+              </label>
+            </div>
+          ) : null}
           {loading ? (
             <Notice>답변을 불러오는 중입니다.</Notice>
           ) : view && view.submissions.length === 0 ? (
             <Notice tone="warning">등록된 답변이 없습니다.</Notice>
+          ) : view && filteredSubmissions.length === 0 ? (
+            <Notice tone="warning">선택한 팀의 답변이 없습니다.</Notice>
           ) : null}
 
-          {view?.submissions.map((submission, index) => {
+          {filteredSubmissions.map((submission, index) => {
             const checked = selectedSubmissionId === submission.id;
             return (
               <label
@@ -165,7 +203,7 @@ export function JudgePage() {
                     name="submission"
                     value={submission.id}
                     checked={checked}
-                    disabled={view.settings.voteClosed}
+                    disabled={view?.settings.voteClosed ?? false}
                     onChange={(event) => setSelectedSubmissionId(event.target.value)}
                   />
                   <div className="min-w-0 flex-1">
