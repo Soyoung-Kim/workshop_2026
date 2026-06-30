@@ -1,6 +1,7 @@
 import { FormEvent, ReactNode, useMemo, useState } from "react";
 import { Download, LockKeyhole, RefreshCw, Save } from "lucide-react";
 import { PageShell } from "../components/PageShell";
+import { HighlightedAnswer } from "../components/HighlightedAnswer";
 import { Button, Notice, SelectInput, TextInput } from "../components/ui";
 import { downloadCsv } from "../lib/csv";
 import { formatKoreanDateTime, fromDateTimeLocal, toDateTimeLocal } from "../lib/date";
@@ -255,8 +256,12 @@ export function AdminPage() {
                           <Td>
                             {submission ? (
                               <div className="max-w-xl space-y-2">
-                                <p className="break-words">{submission.answerOne}</p>
-                                <p className="break-words text-zinc-500">{submission.answerTwo}</p>
+                                <p>
+                                  <HighlightedAnswer kind="teamLike" text={submission.answerOne} />
+                                </p>
+                                <p className="text-zinc-500">
+                                  <HighlightedAnswer kind="withoutTeam" text={submission.answerTwo} />
+                                </p>
                               </div>
                             ) : (
                               <span className="text-zinc-500">답변 정보를 찾을 수 없습니다.</span>
@@ -319,10 +324,14 @@ export function AdminPage() {
                           <Td>{submission.participantName}</Td>
                           <Td>{submission.departmentName}</Td>
                           <Td>
-                            <p className="max-w-sm break-words">{submission.answerOne}</p>
+                            <p className="max-w-sm">
+                              <HighlightedAnswer kind="teamLike" text={submission.answerOne} />
+                            </p>
                           </Td>
                           <Td>
-                            <p className="max-w-sm break-words">{submission.answerTwo}</p>
+                            <p className="max-w-sm">
+                              <HighlightedAnswer kind="withoutTeam" text={submission.answerTwo} />
+                            </p>
                           </Td>
                         </tr>
                       ))}

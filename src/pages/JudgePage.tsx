@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { KeyRound, Save, ShieldCheck } from "lucide-react";
 import { PageShell } from "../components/PageShell";
+import { HighlightedAnswer } from "../components/HighlightedAnswer";
 import { Button, Notice, SelectInput, TextInput } from "../components/ui";
 import { rpcErrorMessage, supabase } from "../lib/supabase";
 import { JudgeViewData } from "../types";
@@ -222,8 +223,8 @@ export function JudgePage() {
                       ) : null}
                     </div>
                     <div className="grid gap-4 md:grid-cols-2">
-                      <AnswerBlock title="우리 팀은 _________ 같다." text={submission.answerOne} />
-                      <AnswerBlock title="우리 팀이 없다면 _________ 될 것이다." text={submission.answerTwo} />
+                      <AnswerBlock kind="teamLike" title="우리 팀은 _________ 같다." text={submission.answerOne} />
+                      <AnswerBlock kind="withoutTeam" title="우리 팀이 없다면 _________ 될 것이다." text={submission.answerTwo} />
                     </div>
                   </div>
                 </div>
@@ -236,11 +237,13 @@ export function JudgePage() {
   );
 }
 
-function AnswerBlock({ title, text }: { title: string; text: string }) {
+function AnswerBlock({ title, text, kind }: { title: string; text: string; kind: "teamLike" | "withoutTeam" }) {
   return (
     <div className="rounded-md border border-zinc-200 bg-zinc-50 p-4">
       <h3 className="text-sm font-bold text-zinc-600">{title}</h3>
-      <p className="mt-2 whitespace-pre-wrap break-words text-base leading-7 text-zinc-950">{text}</p>
+      <p className="mt-2 text-base leading-7 text-zinc-950">
+        <HighlightedAnswer kind={kind} text={text} />
+      </p>
     </div>
   );
 }
