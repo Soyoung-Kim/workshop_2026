@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <title>페이지 이동 중</title>
+    <script>
+      (function () {
+        var parts = window.location.pathname.split("/").filter(Boolean);
+        var last = parts[parts.length - 1] || "";
+        var knownRoute = last === "judge" || last === "admin";
+        var base = knownRoute ? "/" + parts.slice(0, -1).join("/") : "";
+        window.sessionStorage.setItem("ws:redirect", window.location.href);
+        window.location.replace((base || "") + "/");
+      })();
+    </script>
+  </head>
+  <body></body>
+</html>
