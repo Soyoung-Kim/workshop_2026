@@ -7,21 +7,59 @@ type HighlightedAnswerProps = {
 };
 
 export function HighlightedAnswer({ text, kind, className = "" }: HighlightedAnswerProps) {
-  const range = getHighlightRange(text, kind);
+  const { displayText, range } = getHighlightModel(text, kind);
 
   if (!range) {
-    return <span className={`whitespace-pre-wrap break-words ${className}`}>{text}</span>;
+    return <span className={`whitespace-pre-wrap break-words ${className}`}>{displayText}</span>;
   }
 
   return (
     <span className={`whitespace-pre-wrap break-words ${className}`}>
-      {text.slice(0, range.start)}
+      {displayText.slice(0, range.start)}
       <span className="rounded bg-amber-100 px-1.5 py-0.5 font-black text-amber-950 ring-1 ring-amber-200">
-        {text.slice(range.start, range.end)}
+        {displayText.slice(range.start, range.end)}
       </span>
-      {text.slice(range.end)}
+      {displayText.slice(range.end)}
     </span>
   );
+}
+
+function getHighlightModel(text: string, kind: HighlightKind) {
+  const range = getHighlightRange(text, kind);
+
+  if (range) {
+    return { displayText: text, range };
+  }
+
+  const prefixPattern = kind === "teamLike" ? /^우리\s*팀은\s*/ : /^우리\s*팀이\s*없다면\s*/;
+  const prefix = prefixPattern.exec(text);
+
+  if (prefix) {
+    return {
+      displayText: text,
+      range: trimRange(text, prefix[0].length, text.length),
+    };
+  }
+
+  const trimmed = text.trim();
+
+  if (!trimmed) {
+    return { displayText: text, range: null };
+  }
+
+  const template =
+    kind === "teamLike"
+      ? { before: "우리 팀은 ", after: " 같다." }
+      : { before: "우리 팀이 없다면 ", after: " 될 것이다." };
+  const displayText = `${template.before}${trimmed}${template.after}`;
+
+  return {
+    displayText,
+    range: {
+      start: template.before.length,
+      end: template.before.length + trimmed.length,
+    },
+  };
 }
 
 function getHighlightRange(text: string, kind: HighlightKind) {
