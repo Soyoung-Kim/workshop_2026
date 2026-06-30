@@ -1,34 +1,35 @@
-import { useEffect, useMemo, useState } from "react";
-import { Save, ShieldCheck } from "lucide-react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
+import { KeyRound, Save, ShieldCheck } from "lucide-react";
 import { PageShell } from "../components/PageShell";
-import { Button, Notice } from "../components/ui";
+import { Button, Notice, TextInput } from "../components/ui";
 import { rpcErrorMessage, supabase } from "../lib/supabase";
 import { JudgeViewData } from "../types";
 
 export function JudgePage() {
-  const token = useMemo(() => new URLSearchParams(window.location.search).get("token") || "", []);
+  const initialToken = useMemo(() => new URLSearchParams(window.location.search).get("token") || "", []);
+  const [token, setToken] = useState(initialToken);
+  const [tokenInput, setTokenInput] = useState(initialToken);
   const [view, setView] = useState<JudgeViewData | null>(null);
   const [selectedSubmissionId, setSelectedSubmissionId] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(Boolean(initialToken));
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState<{ tone: "success" | "warning" | "error"; text: string } | null>(null);
 
   useEffect(() => {
-    if (!token) {
-      setLoading(false);
-      setStatus({ tone: "error", text: "심사 토큰이 없습니다." });
+    if (!initialToken) {
       return;
     }
 
-    loadView();
-  }, [token]);
+    loadView(initialToken);
+  }, [initialToken]);
 
-  async function loadView() {
+  async function loadView(nextToken: string) {
     setLoading(true);
-    const { data, error } = await supabase.rpc("ws_judge_view", { p_token: token });
+    const { data, error } = await supabase.rpc("ws_judge_view", { p_token: nextToken });
     setLoading(false);
 
     if (error) {
+      setView(null);
       setStatus({ tone: "error", text: rpcErrorMessage(error) });
       return;
     }
@@ -36,6 +37,23 @@ export function JudgePage() {
     const nextView = data as JudgeViewData;
     setView(nextView);
     setSelectedSubmissionId(nextView.selectedSubmissionId ?? "");
+    setStatus(null);
+  }
+
+  async function handleTokenSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const nextToken = tokenInput.trim();
+
+    if (!nextToken) {
+      setStatus({ tone: "warning", text: "심사 토큰을 입력해주세요." });
+      return;
+    }
+
+    const url = new URL(window.location.href);
+    url.searchParams.set("token", nextToken);
+    window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+    setToken(nextToken);
+    await loadView(nextToken);
   }
 
   async function saveVote() {
@@ -79,14 +97,16 @@ export function JudgePage() {
                 {view?.selectedSubmissionId ? "선택 완료" : "미선택"}
               </p>
             </div>
-            <Button
-              type="button"
-              onClick={saveVote}
-              disabled={loading || saving || !view || view.settings.voteClosed}
-            >
-              <Save className="h-4 w-4" aria-hidden="true" />
-              저장
-            </Button>
+            {view ? (
+              <Button
+                type="button"
+                onClick={saveVote}
+                disabled={loading || saving || view.settings.voteClosed}
+              >
+                <Save className="h-4 w-4" aria-hidden="true" />
+                저장
+              </Button>
+            ) : null}
           </div>
           <div className="mt-4 space-y-3">
             {view?.settings.voteClosed ? (
@@ -95,6 +115,32 @@ export function JudgePage() {
             {status ? <Notice tone={status.tone}>{status.text}</Notice> : null}
           </div>
         </section>
+
+        {!view ? (
+          <section className="rounded-lg border border-zinc-200 bg-white p-5 shadow-soft">
+            <form className="mx-auto flex max-w-md flex-col gap-4" onSubmit={handleTokenSubmit}>
+              <div>
+                <h2 className="text-lg font-bold text-zinc-950">심사 토큰 입력</h2>
+                <p className="mt-1 text-sm font-medium text-zinc-500">
+                  전달받은 토큰을 입력하면 심사 화면이 열립니다.
+                </p>
+              </div>
+              <label className="block space-y-2">
+                <span className="text-sm font-bold text-zinc-700">토큰</span>
+                <TextInput
+                  value={tokenInput}
+                  onChange={(event) => setTokenInput(event.target.value)}
+                  placeholder="judge-song"
+                  autoComplete="off"
+                />
+              </label>
+              <Button type="submit" disabled={loading}>
+                <KeyRound className="h-4 w-4" aria-hidden="true" />
+                심사 시작
+              </Button>
+            </form>
+          </section>
+        ) : null}
 
         <section className="space-y-3">
           {loading ? (
