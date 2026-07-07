@@ -1,20 +1,26 @@
-export type AnswerKind = "teamLike" | "withoutTeam";
+export type AnswerKind = "teamLike" | "teamReason";
 
 const templates = {
   teamLike: {
-    before: "우리 팀은 ",
+    before: "내가 생각하는 우리 팀(파트)은 ",
     after: " 같다.",
-    prefixPattern: /^우리\s*팀은\s*/,
-    searchPrefixPattern: /우리\s*팀은\s*/,
+    prefixPattern: /^(?:내가\s*생각하는\s*)?우리\s*팀(?:\(파트\))?은\s*/,
+    searchPrefixPattern: /(?:내가\s*생각하는\s*)?우리\s*팀(?:\(파트\))?은\s*/,
     suffixPattern: /\s*같(?:다|습니다|아요|네요|은|았다|을|다고)?/,
   },
-  withoutTeam: {
-    before: "우리 팀이 없다면 ",
-    after: " 될 것이다.",
-    prefixPattern: /^우리\s*팀이\s*없다면\s*/,
-    searchPrefixPattern: /우리\s*팀이\s*없다면\s*/,
-    suffixPattern: /\s*(?:될\s*것(?:이다|입니다)?|될\s*거(?:다|예요)?|된다|될)/,
+  teamReason: {
+    before: "",
+    after: " 때문이다.",
+    prefixPattern: /^/,
+    searchPrefixPattern: /^/,
+    suffixPattern: /\s*때문(?:이다|입니다|이에요|예요|이라고|이라서|이어서|이고|인|이라)?/,
   },
+};
+
+const legacyWithoutTeam = {
+  prefixPattern: /^우리\s*팀이\s*없다면\s*/,
+  searchPrefixPattern: /우리\s*팀이\s*없다면\s*/,
+  suffixPattern: /\s*(?:될\s*것(?:이다|입니다)?|될\s*거(?:다|예요)?|된다|될)/,
 };
 
 export function composeAnswerText(kind: AnswerKind, phrase: string) {
@@ -38,8 +44,16 @@ export function getAnswerPhrase(text: string, kind: AnswerKind) {
   const template = templates[kind];
   const prefix = template.prefixPattern.exec(trimmed);
 
-  if (prefix) {
+  if (kind === "teamLike" && prefix) {
     return trimmed.slice(prefix[0].length).trim();
+  }
+
+  if (kind === "teamReason") {
+    const legacyRange = getLegacyWithoutTeamRange(text);
+
+    if (legacyRange) {
+      return text.slice(legacyRange.start, legacyRange.end).trim();
+    }
   }
 
   return trimmed;
@@ -72,6 +86,24 @@ function getHighlightRange(text: string, kind: AnswerKind) {
 
   if (suffix && suffix.index > 0) {
     return trimRange(text, searchStart, searchStart + suffix.index);
+  }
+
+  return null;
+}
+
+function getLegacyWithoutTeamRange(text: string) {
+  const prefix = legacyWithoutTeam.searchPrefixPattern.exec(text);
+  const searchStart = prefix ? prefix.index + prefix[0].length : 0;
+  const suffix = legacyWithoutTeam.suffixPattern.exec(text.slice(searchStart));
+
+  if (suffix && suffix.index > 0) {
+    return trimRange(text, searchStart, searchStart + suffix.index);
+  }
+
+  const directPrefix = legacyWithoutTeam.prefixPattern.exec(text.trim());
+
+  if (directPrefix) {
+    return trimRange(text, directPrefix[0].length, text.trim().length);
   }
 
   return null;

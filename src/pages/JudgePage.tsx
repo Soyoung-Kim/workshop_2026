@@ -223,8 +223,8 @@ export function JudgePage() {
                       ) : null}
                     </div>
                     <div className="grid gap-4 md:grid-cols-2">
-                      <AnswerBlock kind="teamLike" title="우리 팀은 _________ 같다." text={submission.answerOne} />
-                      <AnswerBlock kind="withoutTeam" title="우리 팀이 없다면 _________ 될 것이다." text={submission.answerTwo} />
+                      <AnswerBlock kind="teamLike" title="내가 생각하는 우리 팀(파트)은 _________ 같다." text={submission.answerOne} />
+                      <AnswerBlock kind="teamReason" title="_________(이기/하기) 때문이다." text={submission.answerTwo} />
                     </div>
                   </div>
                 </div>
@@ -237,7 +237,7 @@ export function JudgePage() {
   );
 }
 
-function AnswerBlock({ title, text, kind }: { title: string; text: string; kind: "teamLike" | "withoutTeam" }) {
+function AnswerBlock({ title, text, kind }: { title: string; text: string; kind: "teamLike" | "teamReason" }) {
   return (
     <div className="rounded-md border border-zinc-200 bg-zinc-50 p-4">
       <h3 className="text-sm font-bold text-zinc-600">{title}</h3>

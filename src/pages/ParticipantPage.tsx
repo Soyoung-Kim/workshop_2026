@@ -83,7 +83,7 @@ export function ParticipantPage() {
     const submission = data as SubmissionPayload | null;
     setFoundSubmission(submission);
     setAnswerOne(getAnswerPhrase(submission?.answerOne ?? "", "teamLike"));
-    setAnswerTwo(getAnswerPhrase(submission?.answerTwo ?? "", "withoutTeam"));
+    setAnswerTwo(getAnswerPhrase(submission?.answerTwo ?? "", "teamReason"));
     setStep("editor");
     if (submission) {
       const message = "이전 작성 내용이 있습니다. 이전 작성 내용을 불러옵니다.";
@@ -103,7 +103,7 @@ export function ParticipantPage() {
     }
 
     const answerOnePhrase = getAnswerPhrase(answerOne, "teamLike");
-    const answerTwoPhrase = getAnswerPhrase(answerTwo, "withoutTeam");
+    const answerTwoPhrase = getAnswerPhrase(answerTwo, "teamReason");
 
     if (!answerOnePhrase || !answerTwoPhrase) {
       setStatus({ tone: "warning", text: "두 문항을 모두 입력해주세요." });
@@ -214,21 +214,32 @@ export function ParticipantPage() {
             </div>
           ) : (
             <form className="space-y-5" onSubmit={handleSave}>
+              <details className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3">
+                <summary className="cursor-pointer text-sm font-bold text-amber-900">
+                  작성 예시 보기
+                </summary>
+                <div className="mt-3 space-y-3 text-sm leading-6 text-amber-950">
+                  <p>우리 팀은 스위스 아미 나이프 같다. 다양한 기술을 활용해 여러 문제를 해결하기 때문이다.</p>
+                  <p>우리 팀은 건강검진센터 같다. 문제가 커지기 전에 미리 발견하고 관리하기 때문이다.</p>
+                  <p>우리 팀은 번역가 같다. 고객의 생각을 개발자가 이해할 수 있는 언어로 바꿔주기 때문이다.</p>
+                  <p>우리 팀은 여행 플래너 같다. 고객에게 가장 적합한 길을 함께 설계하기 때문이다.</p>
+                </div>
+              </details>
               <AnswerPhraseField
                 kind="teamLike"
-                label="우리 팀은 _________ 같다."
+                label="내가 생각하는 우리 팀(파트)은 _________ 같다."
                 value={answerOne}
                 disabled={bootstrap?.settings.submissionClosed}
                 onChange={setAnswerOne}
-                placeholder="예: 와이파이"
+                placeholder="예: 스위스 아미 나이프"
               />
               <AnswerPhraseField
-                kind="withoutTeam"
-                label="우리 팀이 없다면 _________ 될 것이다."
+                kind="teamReason"
+                label="_________(이기/하기) 때문이다."
                 value={answerTwo}
                 disabled={bootstrap?.settings.submissionClosed}
                 onChange={setAnswerTwo}
-                placeholder="예: 방향을 잃고 같은 문제를 반복하게"
+                placeholder="예: 다양한 기술을 활용해 여러 문제를 해결하기"
               />
               <Button className="w-full sm:w-auto" type="submit" disabled={submitting || bootstrap?.settings.submissionClosed}>
                 <Save className="h-4 w-4" aria-hidden="true" />
@@ -260,8 +271,8 @@ function AnswerPhraseField({
   const phrase = getAnswerPhrase(value, kind);
   const template =
     kind === "teamLike"
-      ? { before: "우리 팀은 ", after: " 같다." }
-      : { before: "우리 팀이 없다면 ", after: " 될 것이다." };
+      ? { before: "내가 생각하는 우리 팀(파트)은 ", after: " 같다." }
+      : { before: "", after: " 때문이다." };
 
   return (
     <label className="block space-y-2">

@@ -260,7 +260,7 @@ export function AdminPage() {
                                   <HighlightedAnswer kind="teamLike" text={submission.answerOne} />
                                 </p>
                                 <p className="text-zinc-500">
-                                  <HighlightedAnswer kind="withoutTeam" text={submission.answerTwo} />
+                                  <HighlightedAnswer kind="teamReason" text={submission.answerTwo} />
                                 </p>
                               </div>
                             ) : (
@@ -330,7 +330,7 @@ export function AdminPage() {
                           </Td>
                           <Td>
                             <p className="max-w-sm">
-                              <HighlightedAnswer kind="withoutTeam" text={submission.answerTwo} />
+                              <HighlightedAnswer kind="teamReason" text={submission.answerTwo} />
                             </p>
                           </Td>
                         </tr>
