@@ -34,13 +34,28 @@ export function AdminPage() {
       }));
   }, [overview]);
 
-  const filteredSelectedJudgeResults = useMemo(() => {
+  const selectedSubmissions = useMemo(() => {
+    const selected = new Map<string, NonNullable<(typeof selectedJudgeResults)[number]["submission"]>>();
+
+    selectedJudgeResults.forEach(({ submission }) => {
+      if (submission) {
+        selected.set(submission.id, submission);
+      }
+    });
+
+    return Array.from(selected.values()).sort((a, b) => {
+      const departmentCompare = a.departmentName.localeCompare(b.departmentName, "ko-KR");
+      return departmentCompare || a.participantName.localeCompare(b.participantName, "ko-KR");
+    });
+  }, [selectedJudgeResults]);
+
+  const filteredSelectedSubmissions = useMemo(() => {
     if (resultDepartmentFilter === "all") {
-      return selectedJudgeResults;
+      return selectedSubmissions;
     }
 
-    return selectedJudgeResults.filter(({ submission }) => submission?.departmentId === resultDepartmentFilter);
-  }, [resultDepartmentFilter, selectedJudgeResults]);
+    return selectedSubmissions.filter((submission) => submission.departmentId === resultDepartmentFilter);
+  }, [resultDepartmentFilter, selectedSubmissions]);
 
   async function loadOverview(nextPassword = password) {
     setLoading(true);
@@ -224,50 +239,35 @@ export function AdminPage() {
                   </Button>
                 </div>
               </div>
-              {selectedJudgeResults.length === 0 ? (
+              {selectedSubmissions.length === 0 ? (
                 <Notice tone="warning">아직 선택한 심사자가 없습니다.</Notice>
-              ) : filteredSelectedJudgeResults.length === 0 ? (
+              ) : filteredSelectedSubmissions.length === 0 ? (
                 <Notice tone="warning">선택한 팀의 심사 결과가 없습니다.</Notice>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="min-w-full border-separate border-spacing-0 text-left text-sm">
                     <thead>
                       <tr className="text-zinc-500">
-                        <Th>심사자</Th>
-                        <Th>선택 팀</Th>
-                        <Th>작성자</Th>
-                        <Th>선택 답변</Th>
-                        <Th>선택 시간</Th>
+                        <Th>이름</Th>
+                        <Th>팀명</Th>
+                        <Th>내용</Th>
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredSelectedJudgeResults.map(({ judge, submission }) => (
-                        <tr key={judge.id} className="align-top">
+                      {filteredSelectedSubmissions.map((submission) => (
+                        <tr key={submission.id} className="align-top">
+                          <Td>{submission.participantName}</Td>
+                          <Td>{submission.departmentName}</Td>
                           <Td>
-                            <div>
-                              <p className="font-bold text-zinc-950">
-                                {judge.name} {judge.role}
+                            <div className="max-w-xl space-y-2">
+                              <p>
+                                <HighlightedAnswer kind="teamLike" text={submission.answerOne} />
                               </p>
-                              <p className="text-xs font-semibold text-zinc-500">{judge.token}</p>
+                              <p className="text-zinc-500">
+                                <HighlightedAnswer kind="teamReason" text={submission.answerTwo} />
+                              </p>
                             </div>
                           </Td>
-                          <Td>{submission?.departmentName ?? judge.selectedDepartment ?? "-"}</Td>
-                          <Td>{submission?.participantName ?? "-"}</Td>
-                          <Td>
-                            {submission ? (
-                              <div className="max-w-xl space-y-2">
-                                <p>
-                                  <HighlightedAnswer kind="teamLike" text={submission.answerOne} />
-                                </p>
-                                <p className="text-zinc-500">
-                                  <HighlightedAnswer kind="teamReason" text={submission.answerTwo} />
-                                </p>
-                              </div>
-                            ) : (
-                              <span className="text-zinc-500">답변 정보를 찾을 수 없습니다.</span>
-                            )}
-                          </Td>
-                          <Td>{formatKoreanDateTime(judge.votedAt)}</Td>
                         </tr>
                       ))}
                     </tbody>
@@ -276,7 +276,7 @@ export function AdminPage() {
               )}
             </section>
 
-            <section className="grid gap-5 lg:grid-cols-[1fr_1.4fr]">
+            <section className="space-y-5">
               <div className="rounded-lg border border-zinc-200 bg-white p-5 shadow-soft">
                 <h2 className="text-lg font-bold text-zinc-950">평가현황</h2>
                 <div className="mt-4 space-y-2">
@@ -306,8 +306,13 @@ export function AdminPage() {
                 </div>
               </div>
 
-              <div className="rounded-lg border border-zinc-200 bg-white p-5 shadow-soft">
-                <h2 className="text-lg font-bold text-zinc-950">답변 조회</h2>
+              <details className="rounded-lg border border-zinc-200 bg-white p-5 shadow-soft">
+                <summary className="cursor-pointer text-lg font-bold text-zinc-950">
+                  전체 답변 조회
+                </summary>
+                <p className="mt-2 text-sm font-medium text-zinc-500">
+                  전체 참여자 답변은 관리자 확인용입니다.
+                </p>
                 <div className="mt-4 max-h-[520px] overflow-auto rounded-md border border-zinc-200">
                   <table className="min-w-full border-separate border-spacing-0 text-left text-sm">
                     <thead className="sticky top-0 bg-zinc-100">
@@ -338,7 +343,7 @@ export function AdminPage() {
                     </tbody>
                   </table>
                 </div>
-              </div>
+              </details>
             </section>
           </>
         ) : null}

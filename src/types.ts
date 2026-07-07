@@ -32,7 +32,6 @@ export type SubmissionPayload = {
 
 export type JudgeSubmission = {
   id: string;
-  departmentName: string;
   answerOne: string;
   answerTwo: string;
   createdAt: string;

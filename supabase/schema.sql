@@ -378,7 +378,6 @@ begin
       select jsonb_agg(
         jsonb_build_object(
           'id', sub.id,
-          'departmentName', d.name,
           'answerOne', sub.answer_one,
           'answerTwo', sub.answer_two,
           'createdAt', sub.created_at
