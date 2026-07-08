@@ -135,6 +135,7 @@ export function ParticipantPage() {
         <section className="rounded-lg border border-zinc-200 bg-white p-5 shadow-soft">
           <div className="mb-4 flex items-center justify-between gap-3">
             <h2 className="text-lg font-bold text-zinc-950">참여자</h2>
+            <h1 className="text-lg font-bold text-zinc-950">중복 참여를 원하실 경우, 이름 뒤에 숫자를 붙여 주세요. ex) 홍길동 , 홍길동1 ...</h1>
             {step === "editor" ? (
               <Button type="button" variant="secondary" onClick={() => setStep("identity")}>
                 <RotateCcw className="h-4 w-4" aria-hidden="true" />
@@ -177,6 +178,9 @@ export function ParticipantPage() {
             </h2>
             <span className="text-sm font-semibold text-zinc-500">
               {step === "editor" ? participantName.trim() : "이름을 먼저 확인"}
+            </span>
+            <span className="text-sm font-semibold text-zinc-500">
+              작성된 답변은, 심사자에 공개됩니다. 심사시 작성자 이름은 표시되지 않습니다.
             </span>
           </div>
 
