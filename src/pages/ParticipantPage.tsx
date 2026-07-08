@@ -135,9 +135,7 @@ export function ParticipantPage() {
         <section className="rounded-lg border border-zinc-200 bg-white p-5 shadow-soft">
           <div className="mb-4 flex items-center justify-between gap-3">
             <h2 className="text-lg font-bold text-zinc-950">참여자</h2>
-            <span className="text-sm font-semibold text-zinc-500">
-              중복 참여를 원하실 경우, 이름 뒤에 숫자를 붙여 주세요. ex) 홍길동 , 홍길동1 ....
-            </span>
+
 
             {step === "editor" ? (
               <Button type="button" variant="secondary" onClick={() => setStep("identity")}>
@@ -150,6 +148,9 @@ export function ParticipantPage() {
           <form className="space-y-4" onSubmit={handleStart}>
             <label className="block space-y-2">
               <span className="text-sm font-bold text-zinc-700">이름</span>
+              <span className="text-sm font-semibold text-zinc-500">
+                중복 참여를 원하실 경우, 이름 뒤에 숫자를 붙여 주세요. ex) 홍길동 , 홍길동1 ....
+              </span>
               <TextInput
                 value={participantName}
                 disabled={step === "editor"}
@@ -182,11 +183,10 @@ export function ParticipantPage() {
             <span className="text-sm font-semibold text-zinc-500">
               {step === "editor" ? participantName.trim() : "이름을 먼저 확인"}
             </span>
-            <span className="text-sm font-semibold text-zinc-500">
-              작성된 답변은, 심사자에 공개됩니다. 심사시 작성자 이름은 표시되지 않습니다.
-            </span>
           </div>
-
+          <span className="text-sm font-semibold text-zinc-500">
+            작성된 답변은, 심사자에 공개됩니다. 심사시 작성자 이름은 표시되지 않습니다.
+          </span>
           {step === "identity" ? (
             <div className="flex min-h-72 items-center justify-center rounded-md border border-dashed border-zinc-300 bg-zinc-50 px-4 text-center text-sm font-semibold text-zinc-500">
               이름을 입력하면 답변 입력창이 열립니다.
