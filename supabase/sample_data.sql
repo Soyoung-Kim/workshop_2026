@@ -96,4 +96,4 @@ do update set
 
 select count(*) as count
 from public.ws_submission s
-join active_event e on e.id = s.event_id;
+where s.event_id = public.ws_current_event_id();
