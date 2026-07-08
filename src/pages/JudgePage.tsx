@@ -11,10 +11,12 @@ export function JudgePage() {
   const [token, setToken] = useState(initialToken);
   const [tokenInput, setTokenInput] = useState(initialToken);
   const [view, setView] = useState<JudgeViewData | null>(null);
-  const [selectedSubmissionId, setSelectedSubmissionId] = useState("");
+  const [selectedSubmissionIds, setSelectedSubmissionIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(Boolean(initialToken));
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState<{ tone: "success" | "warning" | "error"; text: string } | null>(null);
+
+  const selectionLimit = view?.settings.votesPerJudge ?? 1;
 
   useEffect(() => {
     if (!initialToken) {
@@ -31,13 +33,14 @@ export function JudgePage() {
 
     if (error) {
       setView(null);
+      setSelectedSubmissionIds([]);
       setStatus({ tone: "error", text: rpcErrorMessage(error) });
       return;
     }
 
     const nextView = data as JudgeViewData;
     setView(nextView);
-    setSelectedSubmissionId(nextView.selectedSubmissionId ?? "");
+    setSelectedSubmissionIds(nextView.selectedSubmissionIds ?? []);
     setStatus(null);
   }
 
@@ -57,16 +60,41 @@ export function JudgePage() {
     await loadView(nextToken);
   }
 
+  function toggleSubmission(submissionId: string) {
+    if (!view || view.settings.voteClosed) {
+      return;
+    }
+
+    if (selectedSubmissionIds.includes(submissionId)) {
+      setSelectedSubmissionIds((current) => current.filter((id) => id !== submissionId));
+      setStatus(null);
+      return;
+    }
+
+    if (selectedSubmissionIds.length >= selectionLimit) {
+      setStatus({ tone: "warning", text: `최대 ${selectionLimit}개까지 선택할 수 있습니다.` });
+      return;
+    }
+
+    setSelectedSubmissionIds((current) => [...current, submissionId]);
+    setStatus(null);
+  }
+
   async function saveVote() {
-    if (!selectedSubmissionId) {
-      setStatus({ tone: "warning", text: "답변을 하나 선택해주세요." });
+    if (selectedSubmissionIds.length === 0) {
+      setStatus({ tone: "warning", text: "답변을 하나 이상 선택해주세요." });
+      return;
+    }
+
+    if (selectedSubmissionIds.length > selectionLimit) {
+      setStatus({ tone: "warning", text: `최대 ${selectionLimit}개까지 선택할 수 있습니다.` });
       return;
     }
 
     setSaving(true);
     const { data, error } = await supabase.rpc("ws_cast_vote", {
       p_token: token,
-      p_submission_id: selectedSubmissionId,
+      p_submission_ids: selectedSubmissionIds,
     });
     setSaving(false);
 
@@ -77,16 +105,12 @@ export function JudgePage() {
 
     const nextView = data as JudgeViewData;
     setView(nextView);
-    setSelectedSubmissionId(nextView.selectedSubmissionId ?? selectedSubmissionId);
+    setSelectedSubmissionIds(nextView.selectedSubmissionIds ?? selectedSubmissionIds);
     setStatus({ tone: "success", text: "선택이 저장되었습니다." });
   }
 
   return (
-    <PageShell
-      eyebrow="심사자"
-      title="우리 팀은 어떤 팀인가?"
-      settings={view?.settings}
-    >
+    <PageShell eyebrow="심사자" title="우리 팀은 어떤 팀인가?" settings={view?.settings}>
       <div className="space-y-5">
         <section className="rounded-lg border border-zinc-200 bg-white p-5 shadow-soft">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -95,7 +119,7 @@ export function JudgePage() {
                 {view ? `${view.judge.name} ${view.judge.role}` : "심사"}
               </h2>
               <p className="mt-1 text-sm font-medium text-zinc-500">
-                {view?.selectedSubmissionId ? "선택 완료" : "미선택"}
+                {view ? `${selectedSubmissionIds.length}/${selectionLimit}개 선택` : "토큰 입력 후 심사 시작"}
               </p>
             </div>
             {view ? (
@@ -110,6 +134,11 @@ export function JudgePage() {
             ) : null}
           </div>
           <div className="mt-4 space-y-3">
+            {view ? (
+              <Notice>
+                마음에 드는 답변을 최대 {selectionLimit}개까지 선택할 수 있습니다. 작성자 이름은 표시되지 않습니다.
+              </Notice>
+            ) : null}
             {view?.settings.voteClosed ? (
               <Notice tone="warning">평가 마감 이후에는 수정할 수 없습니다.</Notice>
             ) : null}
@@ -151,7 +180,7 @@ export function JudgePage() {
           ) : null}
 
           {view?.submissions.map((submission, index) => {
-            const checked = selectedSubmissionId === submission.id;
+            const checked = selectedSubmissionIds.includes(submission.id);
             return (
               <label
                 key={submission.id}
@@ -162,12 +191,12 @@ export function JudgePage() {
                 <div className="flex items-start gap-4">
                   <input
                     className="mt-1 h-5 w-5 accent-teal-700"
-                    type="radio"
+                    type="checkbox"
                     name="submission"
                     value={submission.id}
                     checked={checked}
                     disabled={view?.settings.voteClosed ?? false}
-                    onChange={(event) => setSelectedSubmissionId(event.target.value)}
+                    onChange={() => toggleSubmission(submission.id)}
                   />
                   <div className="min-w-0 flex-1">
                     <div className="mb-3 flex flex-wrap items-center gap-2">

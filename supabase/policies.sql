@@ -1,12 +1,10 @@
 alter table public.ws_event enable row level security;
-alter table public.ws_department enable row level security;
 alter table public.ws_submission enable row level security;
 alter table public.ws_judge enable row level security;
 alter table public.ws_vote enable row level security;
 alter table public.ws_setting enable row level security;
 
 revoke all on table public.ws_event from anon, authenticated;
-revoke all on table public.ws_department from anon, authenticated;
 revoke all on table public.ws_submission from anon, authenticated;
 revoke all on table public.ws_judge from anon, authenticated;
 revoke all on table public.ws_vote from anon, authenticated;
@@ -22,9 +20,9 @@ revoke execute on function public.ws_touch_updated_at() from public;
 grant usage on schema public to anon, authenticated;
 
 grant execute on function public.ws_public_bootstrap() to anon, authenticated;
-grant execute on function public.ws_find_submission(uuid, text) to anon, authenticated;
-grant execute on function public.ws_upsert_submission(uuid, text, text, text) to anon, authenticated;
+grant execute on function public.ws_find_submission(text) to anon, authenticated;
+grant execute on function public.ws_upsert_submission(text, text, text) to anon, authenticated;
 grant execute on function public.ws_judge_view(text) to anon, authenticated;
-grant execute on function public.ws_cast_vote(text, uuid) to anon, authenticated;
+grant execute on function public.ws_cast_vote(text, uuid[]) to anon, authenticated;
 grant execute on function public.ws_admin_overview(text) to anon, authenticated;
-grant execute on function public.ws_admin_update_settings(text, timestamptz, timestamptz) to anon, authenticated;
+grant execute on function public.ws_admin_update_settings(text, timestamptz, timestamptz, integer) to anon, authenticated;

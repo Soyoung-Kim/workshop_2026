@@ -15,47 +15,25 @@ export function AdminPage() {
   const [overview, setOverview] = useState<AdminOverview | null>(null);
   const [submissionDeadline, setSubmissionDeadline] = useState("");
   const [voteDeadline, setVoteDeadline] = useState("");
+  const [votesPerJudge, setVotesPerJudge] = useState(3);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [resultDepartmentFilter, setResultDepartmentFilter] = useState("all");
   const [status, setStatus] = useState<{ tone: "success" | "warning" | "error"; text: string } | null>(null);
 
-  const selectedJudgeResults = useMemo(() => {
-    if (!overview) {
-      return [];
-    }
+  const selectedSubmissions = useMemo(
+    () => overview?.results.filter((submission) => submission.voteCount > 0) ?? [],
+    [overview],
+  );
 
-    return overview.judges
-      .filter((judge) => judge.selectedSubmissionId)
-      .map((judge) => ({
-        judge,
-        submission:
-          overview.submissions.find((submission) => submission.id === judge.selectedSubmissionId) ?? null,
-      }));
-  }, [overview]);
+  const completedJudgeCount = useMemo(
+    () => overview?.judges.filter((judge) => judge.selectedCount > 0).length ?? 0,
+    [overview],
+  );
 
-  const selectedSubmissions = useMemo(() => {
-    const selected = new Map<string, NonNullable<(typeof selectedJudgeResults)[number]["submission"]>>();
-
-    selectedJudgeResults.forEach(({ submission }) => {
-      if (submission) {
-        selected.set(submission.id, submission);
-      }
-    });
-
-    return Array.from(selected.values()).sort((a, b) => {
-      const departmentCompare = a.departmentName.localeCompare(b.departmentName, "ko-KR");
-      return departmentCompare || a.participantName.localeCompare(b.participantName, "ko-KR");
-    });
-  }, [selectedJudgeResults]);
-
-  const filteredSelectedSubmissions = useMemo(() => {
-    if (resultDepartmentFilter === "all") {
-      return selectedSubmissions;
-    }
-
-    return selectedSubmissions.filter((submission) => submission.departmentId === resultDepartmentFilter);
-  }, [resultDepartmentFilter, selectedSubmissions]);
+  const totalVoteCount = useMemo(
+    () => selectedSubmissions.reduce((total, submission) => total + submission.voteCount, 0),
+    [selectedSubmissions],
+  );
 
   async function loadOverview(nextPassword = password) {
     setLoading(true);
@@ -71,6 +49,7 @@ export function AdminPage() {
     setOverview(nextOverview);
     setSubmissionDeadline(toDateTimeLocal(nextOverview.settings.submissionDeadline));
     setVoteDeadline(toDateTimeLocal(nextOverview.settings.voteDeadline));
+    setVotesPerJudge(nextOverview.settings.votesPerJudge);
     window.sessionStorage.setItem(PASSWORD_STORAGE_KEY, nextPassword);
     setStatus({ tone: "success", text: "관리자 데이터가 갱신되었습니다." });
   }
@@ -97,6 +76,7 @@ export function AdminPage() {
       p_password: password,
       p_submission_deadline: fromDateTimeLocal(submissionDeadline),
       p_vote_deadline: fromDateTimeLocal(voteDeadline),
+      p_votes_per_judge: votesPerJudge,
     });
     setSaving(false);
 
@@ -109,6 +89,7 @@ export function AdminPage() {
     setOverview(nextOverview);
     setSubmissionDeadline(toDateTimeLocal(nextOverview.settings.submissionDeadline));
     setVoteDeadline(toDateTimeLocal(nextOverview.settings.voteDeadline));
+    setVotesPerJudge(nextOverview.settings.votesPerJudge);
     setStatus({ tone: "success", text: "운영설정이 저장되었습니다." });
   }
 
@@ -119,10 +100,9 @@ export function AdminPage() {
 
     downloadCsv(
       "workshop-submissions.csv",
-      ["이름", "팀", "답변1", "답변2", "득표수", "작성일", "수정일"],
+      ["이름", "답변1", "답변2", "득표수", "작성일", "수정일"],
       overview.submissions.map((submission) => [
         submission.participantName,
-        submission.departmentName,
         submission.answerOne,
         submission.answerTwo,
         submission.voteCount,
@@ -174,7 +154,7 @@ export function AdminPage() {
                     새로고침
                   </Button>
                 </div>
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-4 sm:grid-cols-3">
                   <label className="block space-y-2">
                     <span className="text-sm font-bold text-zinc-700">답변 마감시간</span>
                     <TextInput
@@ -191,6 +171,17 @@ export function AdminPage() {
                       onChange={(event) => setVoteDeadline(event.target.value)}
                     />
                   </label>
+                  <label className="block space-y-2">
+                    <span className="text-sm font-bold text-zinc-700">심사자별 선택 수</span>
+                    <SelectInput
+                      value={votesPerJudge}
+                      onChange={(event) => setVotesPerJudge(Number(event.target.value))}
+                    >
+                      <option value={1}>1개</option>
+                      <option value={2}>2개</option>
+                      <option value={3}>3개</option>
+                    </SelectInput>
+                  </label>
                 </div>
                 <Button className="mt-4" type="button" onClick={saveSettings} disabled={saving}>
                   <Save className="h-4 w-4" aria-hidden="true" />
@@ -200,17 +191,10 @@ export function AdminPage() {
 
               <div className="rounded-lg border border-zinc-200 bg-white p-5 shadow-soft">
                 <h2 className="text-lg font-bold text-zinc-950">참여현황</h2>
-                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <div className="mt-4 grid gap-3 sm:grid-cols-3">
                   <Metric label="전체 참여자" value={`${overview.counts.total}명`} tone="teal" />
-                  <Metric label="심사 완료" value={`${overview.judges.filter((judge) => judge.selectedSubmissionId).length}/5명`} tone="amber" />
-                </div>
-                <div className="mt-4 grid gap-2">
-                  {overview.counts.byDepartment.map((item) => (
-                    <div key={item.departmentId} className="flex items-center justify-between rounded-md bg-zinc-100 px-3 py-2 text-sm">
-                      <span className="font-semibold text-zinc-700">{item.departmentName}</span>
-                      <span className="font-bold text-zinc-950">{item.count}명</span>
-                    </div>
-                  ))}
+                  <Metric label="심사 참여" value={`${completedJudgeCount}/5명`} tone="amber" />
+                  <Metric label="총 득표" value={`${totalVoteCount}표`} tone="zinc" />
                 </div>
               </div>
             </section>
@@ -218,46 +202,34 @@ export function AdminPage() {
             <section className="rounded-lg border border-zinc-200 bg-white p-5 shadow-soft">
               <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <h2 className="text-lg font-bold text-zinc-950">결과집계</h2>
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-                  <label className="grid gap-2 sm:w-48">
-                    <span className="text-sm font-bold text-zinc-700">팀별 필터</span>
-                    <SelectInput
-                      value={resultDepartmentFilter}
-                      onChange={(event) => setResultDepartmentFilter(event.target.value)}
-                    >
-                      <option value="all">전체</option>
-                      {overview.departments.map((department) => (
-                        <option key={department.id} value={department.id}>
-                          {department.name}
-                        </option>
-                      ))}
-                    </SelectInput>
-                  </label>
-                  <Button type="button" variant="secondary" onClick={exportSubmissions}>
-                    <Download className="h-4 w-4" aria-hidden="true" />
-                    CSV 다운로드
-                  </Button>
-                </div>
+                <Button type="button" variant="secondary" onClick={exportSubmissions}>
+                  <Download className="h-4 w-4" aria-hidden="true" />
+                  CSV 다운로드
+                </Button>
               </div>
               {selectedSubmissions.length === 0 ? (
                 <Notice tone="warning">아직 선택한 심사자가 없습니다.</Notice>
-              ) : filteredSelectedSubmissions.length === 0 ? (
-                <Notice tone="warning">선택한 팀의 심사 결과가 없습니다.</Notice>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="min-w-full border-separate border-spacing-0 text-left text-sm">
                     <thead>
                       <tr className="text-zinc-500">
+                        <Th>순위</Th>
+                        <Th>득표수</Th>
                         <Th>이름</Th>
-                        <Th>팀명</Th>
                         <Th>내용</Th>
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredSelectedSubmissions.map((submission) => (
+                      {selectedSubmissions.map((submission, index) => (
                         <tr key={submission.id} className="align-top">
+                          <Td>{index + 1}</Td>
+                          <Td>
+                            <span className="rounded bg-teal-100 px-2 py-1 text-sm font-black text-teal-900">
+                              {submission.voteCount}표
+                            </span>
+                          </Td>
                           <Td>{submission.participantName}</Td>
-                          <Td>{submission.departmentName}</Td>
                           <Td>
                             <div className="max-w-xl space-y-2">
                               <p>
@@ -287,18 +259,21 @@ export function AdminPage() {
                           <p className="font-bold text-zinc-950">
                             {judge.name} {judge.role}
                           </p>
+                          <p className="mt-1 text-sm font-medium text-zinc-500">
+                            {judge.selectedCount}/{overview.settings.votesPerJudge}개 선택
+                          </p>
                         </div>
                         <span
                           className={`rounded px-2 py-1 text-xs font-bold ${
-                            judge.selectedSubmissionId ? "bg-teal-100 text-teal-800" : "bg-zinc-100 text-zinc-500"
+                            judge.selectedCount > 0 ? "bg-teal-100 text-teal-800" : "bg-zinc-100 text-zinc-500"
                           }`}
                         >
-                          {judge.selectedSubmissionId ? "선택" : "미선택"}
+                          {judge.selectedCount > 0 ? "선택" : "미선택"}
                         </span>
                       </div>
-                      {judge.selectedDepartment ? (
+                      {judge.votedAt ? (
                         <p className="mt-2 text-sm font-medium text-zinc-600">
-                          {judge.selectedDepartment} · {formatKoreanDateTime(judge.votedAt)}
+                          마지막 저장 {formatKoreanDateTime(judge.votedAt)}
                         </p>
                       ) : null}
                     </div>
@@ -318,7 +293,7 @@ export function AdminPage() {
                     <thead className="sticky top-0 bg-zinc-100">
                       <tr className="text-zinc-500">
                         <Th>이름</Th>
-                        <Th>팀</Th>
+                        <Th>득표수</Th>
                         <Th>답변1</Th>
                         <Th>답변2</Th>
                       </tr>
@@ -327,7 +302,7 @@ export function AdminPage() {
                       {overview.submissions.map((submission) => (
                         <tr key={submission.id} className="align-top">
                           <Td>{submission.participantName}</Td>
-                          <Td>{submission.departmentName}</Td>
+                          <Td>{submission.voteCount}표</Td>
                           <Td>
                             <p className="max-w-sm">
                               <HighlightedAnswer kind="teamLike" text={submission.answerOne} />
@@ -352,10 +327,11 @@ export function AdminPage() {
   );
 }
 
-function Metric({ label, value, tone }: { label: string; value: string; tone: "teal" | "amber" }) {
+function Metric({ label, value, tone }: { label: string; value: string; tone: "teal" | "amber" | "zinc" }) {
   const colors = {
     teal: "bg-teal-50 text-teal-900 border-teal-100",
     amber: "bg-amber-50 text-amber-900 border-amber-100",
+    zinc: "bg-zinc-50 text-zinc-900 border-zinc-200",
   };
 
   return (

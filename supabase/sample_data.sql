@@ -5,16 +5,6 @@ with active_event as (
   order by created_at desc
   limit 1
 ),
-team_counts as (
-  select *
-  from (
-    values
-      ('클라우드사업부', 23),
-      ('클라우드기술팀', 27),
-      ('솔루션팀', 21),
-      ('플랫폼개발실', 25)
-  ) as t(department_name, sample_count)
-),
 phrases as (
   select
     array[
@@ -43,8 +33,7 @@ phrases as (
       '스위치',
       '도서관',
       '오케스트라',
-      '기상청',
-      '백업 시스템'
+      '기상청'
     ] as answer_one_values,
     array[
       '다양한 기술을 활용해 여러 문제를 해결하기',
@@ -68,28 +57,24 @@ phrases as (
       '여러 움직임을 한눈에 보며 우선순위를 잡아주기',
       '새로운 방법을 시도하고 더 나은 방식을 찾아내기',
       '흔들리는 부분을 점검하고 다시 안정화하기',
-      '부서와 고객, 계획과 실행 사이를 이어주기',
+      '고객, 계획, 실행 사이를 이어주기',
       '좋은 아이디어가 실제 실행으로 켜지게 하기',
       '필요한 지식과 경험을 찾아 쓸 수 있게 모아두기',
       '각자의 역할이 하나의 흐름으로 들리게 만들기',
-      '앞으로 다가올 변화를 미리 살피고 준비하게 하기',
-      '예상치 못한 상황에서도 다시 이어갈 수 있게 해주기'
+      '앞으로 다가올 변화를 미리 살피고 준비하게 하기'
     ] as answer_two_values
 ),
 sample_source as (
   select
-    tc.department_name,
     n,
-    format('%s 테스트%02s', tc.department_name, n) as participant_name,
+    format('테스트%02s', n) as participant_name,
     phrases.answer_one_values[((n - 1) % array_length(phrases.answer_one_values, 1)) + 1] as answer_one,
     phrases.answer_two_values[((n - 1) % array_length(phrases.answer_two_values, 1)) + 1] as answer_two
-  from team_counts tc
-  cross join phrases
-  cross join lateral generate_series(1, tc.sample_count) as n
+  from phrases
+  cross join lateral generate_series(1, 26) as n
 )
 insert into public.ws_submission (
   event_id,
-  department_id,
   participant_name,
   participant_key,
   answer_one,
@@ -97,25 +82,18 @@ insert into public.ws_submission (
 )
 select
   e.id,
-  d.id,
   s.participant_name,
   lower(regexp_replace(trim(s.participant_name), '\s+', '', 'g')),
   s.answer_one,
   s.answer_two
 from sample_source s
 cross join active_event e
-join public.ws_department d
-  on d.event_id = e.id
- and d.name = s.department_name
-on conflict (event_id, department_id, participant_key)
+on conflict (event_id, participant_key)
 do update set
   participant_name = excluded.participant_name,
   answer_one = excluded.answer_one,
   answer_two = excluded.answer_two;
 
-select d.name, count(*) as count
+select count(*) as count
 from public.ws_submission s
-join public.ws_department d on d.id = s.department_id
-join active_event e on e.id = s.event_id
-group by d.name
-order by d.name;
+join active_event e on e.id = s.event_id;

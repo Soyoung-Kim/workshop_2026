@@ -1,13 +1,9 @@
-export type Department = {
-  id: string;
-  name: string;
-};
-
 export type PublicSettings = {
   submissionDeadline: string;
   voteDeadline: string;
   submissionClosed: boolean;
   voteClosed: boolean;
+  votesPerJudge: number;
 };
 
 export type BootstrapData = {
@@ -15,14 +11,11 @@ export type BootstrapData = {
     id: string;
     title: string;
   };
-  departments: Department[];
   settings: PublicSettings;
 };
 
 export type SubmissionPayload = {
   id: string;
-  departmentId: string;
-  departmentName: string;
   participantName: string;
   answerOne: string;
   answerTwo: string;
@@ -34,7 +27,6 @@ export type JudgeSubmission = {
   id: string;
   answerOne: string;
   answerTwo: string;
-  createdAt: string;
 };
 
 export type JudgeViewData = {
@@ -44,13 +36,7 @@ export type JudgeViewData = {
   };
   settings: PublicSettings;
   submissions: JudgeSubmission[];
-  selectedSubmissionId: string | null;
-};
-
-export type CountByDepartment = {
-  departmentId: string;
-  departmentName: string;
-  count: number;
+  selectedSubmissionIds: string[];
 };
 
 export type AdminSubmission = SubmissionPayload & {
@@ -62,8 +48,8 @@ export type AdminJudge = {
   name: string;
   role: string;
   token: string;
-  selectedSubmissionId: string | null;
-  selectedDepartment: string | null;
+  selectedSubmissionIds: string[];
+  selectedCount: number;
   votedAt: string | null;
 };
 
@@ -73,10 +59,8 @@ export type AdminOverview = {
     title: string;
   };
   settings: PublicSettings;
-  departments: Department[];
   counts: {
     total: number;
-    byDepartment: CountByDepartment[];
   };
   submissions: AdminSubmission[];
   judges: AdminJudge[];

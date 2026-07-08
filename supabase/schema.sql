@@ -1,5 +1,22 @@
 create extension if not exists pgcrypto;
 
+drop function if exists public.ws_public_bootstrap();
+drop function if exists public.ws_find_submission(uuid, text);
+drop function if exists public.ws_find_submission(text);
+drop function if exists public.ws_upsert_submission(uuid, text, text, text);
+drop function if exists public.ws_upsert_submission(text, text, text);
+drop function if exists public.ws_judge_view(text);
+drop function if exists public.ws_cast_vote(text, uuid);
+drop function if exists public.ws_cast_vote(text, uuid[]);
+drop function if exists public.ws_admin_overview(text);
+drop function if exists public.ws_admin_update_settings(text, timestamptz, timestamptz);
+drop function if exists public.ws_admin_update_settings(text, timestamptz, timestamptz, integer);
+drop function if exists public.ws_admin_submission_rows(uuid);
+drop function if exists public.ws_admin_judge_rows(uuid);
+drop function if exists public.ws_admin_password_is_valid(uuid, text);
+drop function if exists public.ws_current_event_id();
+drop function if exists public.ws_participant_key(text);
+
 create table if not exists public.ws_event (
   id uuid primary key default gen_random_uuid(),
   title text not null,
@@ -7,27 +24,42 @@ create table if not exists public.ws_event (
   created_at timestamptz not null default now()
 );
 
-create table if not exists public.ws_department (
-  id uuid primary key default gen_random_uuid(),
-  event_id uuid not null references public.ws_event(id) on delete cascade,
-  name text not null,
-  sort_order integer not null default 0,
-  created_at timestamptz not null default now(),
-  unique (event_id, name)
-);
-
 create table if not exists public.ws_submission (
   id uuid primary key default gen_random_uuid(),
   event_id uuid not null references public.ws_event(id) on delete cascade,
-  department_id uuid not null references public.ws_department(id) on delete restrict,
   participant_name text not null,
   participant_key text not null,
   answer_one text not null,
   answer_two text not null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  unique (event_id, department_id, participant_key)
+  unique (event_id, participant_key)
 );
+
+alter table public.ws_submission
+  drop constraint if exists ws_submission_event_id_department_id_participant_key_key;
+
+alter table public.ws_submission
+  drop constraint if exists ws_submission_department_id_fkey;
+
+alter table public.ws_submission
+  drop column if exists department_id;
+
+drop table if exists public.ws_department cascade;
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conrelid = 'public.ws_submission'::regclass
+      and conname = 'ws_submission_event_id_participant_key_key'
+  ) then
+    alter table public.ws_submission
+      add constraint ws_submission_event_id_participant_key_key unique (event_id, participant_key);
+  end if;
+end;
+$$;
 
 create table if not exists public.ws_judge (
   id uuid primary key default gen_random_uuid(),
@@ -46,16 +78,51 @@ create table if not exists public.ws_vote (
   submission_id uuid not null references public.ws_submission(id) on delete cascade,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  unique (event_id, judge_id)
+  unique (event_id, judge_id, submission_id)
 );
+
+alter table public.ws_vote
+  drop constraint if exists ws_vote_event_id_judge_id_key;
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conrelid = 'public.ws_vote'::regclass
+      and conname = 'ws_vote_event_id_judge_id_submission_id_key'
+  ) then
+    alter table public.ws_vote
+      add constraint ws_vote_event_id_judge_id_submission_id_key unique (event_id, judge_id, submission_id);
+  end if;
+end;
+$$;
 
 create table if not exists public.ws_setting (
   event_id uuid primary key references public.ws_event(id) on delete cascade,
   submission_deadline timestamptz not null,
   vote_deadline timestamptz not null,
+  votes_per_judge integer not null default 3 check (votes_per_judge between 1 and 3),
   admin_password text not null,
   updated_at timestamptz not null default now()
 );
+
+alter table public.ws_setting
+  add column if not exists votes_per_judge integer not null default 3;
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conrelid = 'public.ws_setting'::regclass
+      and conname = 'ws_setting_votes_per_judge_check'
+  ) then
+    alter table public.ws_setting
+      add constraint ws_setting_votes_per_judge_check check (votes_per_judge between 1 and 3);
+  end if;
+end;
+$$;
 
 create or replace function public.ws_touch_updated_at()
 returns trigger
@@ -88,15 +155,6 @@ on conflict (id) do update
 set title = excluded.title,
     active = excluded.active;
 
-insert into public.ws_department (id, event_id, name, sort_order)
-values
-  ('20260000-0000-0000-0000-000000000101', '20260000-0000-0000-0000-000000000001', '클라우드사업부', 10),
-  ('20260000-0000-0000-0000-000000000102', '20260000-0000-0000-0000-000000000001', '클라우드기술팀', 20),
-  ('20260000-0000-0000-0000-000000000103', '20260000-0000-0000-0000-000000000001', '솔루션팀', 30),
-  ('20260000-0000-0000-0000-000000000104', '20260000-0000-0000-0000-000000000001', '플랫폼개발실', 40)
-on conflict (event_id, name) do update
-set sort_order = excluded.sort_order;
-
 insert into public.ws_judge (id, event_id, name, role, token, sort_order)
 values
   ('20260000-0000-0000-0000-000000000201', '20260000-0000-0000-0000-000000000001', '송기흥', '팀장', 'judge-song', 10),
@@ -109,11 +167,12 @@ set name = excluded.name,
     role = excluded.role,
     sort_order = excluded.sort_order;
 
-insert into public.ws_setting (event_id, submission_deadline, vote_deadline, admin_password)
+insert into public.ws_setting (event_id, submission_deadline, vote_deadline, votes_per_judge, admin_password)
 values (
   '20260000-0000-0000-0000-000000000001',
   '2026-12-31 18:00:00+09',
   '2026-12-31 20:00:00+09',
+  3,
   'CHANGE_ME_ADMIN_PASSWORD'
 )
 on conflict (event_id) do nothing;
@@ -164,22 +223,12 @@ begin
       'id', e.id,
       'title', e.title
     ),
-    'departments', coalesce((
-      select jsonb_agg(
-        jsonb_build_object(
-          'id', d.id,
-          'name', d.name
-        )
-        order by d.sort_order, d.name
-      )
-      from public.ws_department d
-      where d.event_id = e.id
-    ), '[]'::jsonb),
     'settings', jsonb_build_object(
       'submissionDeadline', s.submission_deadline,
       'voteDeadline', s.vote_deadline,
       'submissionClosed', now() > s.submission_deadline,
-      'voteClosed', now() > s.vote_deadline
+      'voteClosed', now() > s.vote_deadline,
+      'votesPerJudge', s.votes_per_judge
     )
   )
   into v_result
@@ -191,10 +240,7 @@ begin
 end;
 $$;
 
-create or replace function public.ws_find_submission(
-  p_department_id uuid,
-  p_participant_name text
-)
+create or replace function public.ws_find_submission(p_participant_name text)
 returns jsonb
 language plpgsql
 stable
@@ -205,12 +251,11 @@ declare
   v_event uuid;
   v_key text;
   v_submission public.ws_submission%rowtype;
-  v_department_name text;
 begin
   v_event := public.ws_current_event_id();
   v_key := public.ws_participant_key(p_participant_name);
 
-  if v_event is null or p_department_id is null or v_key = '' then
+  if v_event is null or v_key = '' then
     return null;
   end if;
 
@@ -218,22 +263,14 @@ begin
   into v_submission
   from public.ws_submission s
   where s.event_id = v_event
-    and s.department_id = p_department_id
     and s.participant_key = v_key;
 
   if v_submission.id is null then
     return null;
   end if;
 
-  select name
-  into v_department_name
-  from public.ws_department
-  where id = v_submission.department_id;
-
   return jsonb_build_object(
     'id', v_submission.id,
-    'departmentId', v_submission.department_id,
-    'departmentName', v_department_name,
     'participantName', v_submission.participant_name,
     'answerOne', v_submission.answer_one,
     'answerTwo', v_submission.answer_two,
@@ -244,7 +281,6 @@ end;
 $$;
 
 create or replace function public.ws_upsert_submission(
-  p_department_id uuid,
   p_participant_name text,
   p_answer_one text,
   p_answer_two text
@@ -258,7 +294,6 @@ declare
   v_event uuid;
   v_key text;
   v_submission public.ws_submission%rowtype;
-  v_department_name text;
   v_settings public.ws_setting%rowtype;
 begin
   v_event := public.ws_current_event_id();
@@ -285,19 +320,8 @@ begin
     raise exception 'Both answers are required.';
   end if;
 
-  select name
-  into v_department_name
-  from public.ws_department
-  where id = p_department_id
-    and event_id = v_event;
-
-  if v_department_name is null then
-    raise exception 'Invalid department.';
-  end if;
-
   insert into public.ws_submission (
     event_id,
-    department_id,
     participant_name,
     participant_key,
     answer_one,
@@ -305,13 +329,12 @@ begin
   )
   values (
     v_event,
-    p_department_id,
     trim(p_participant_name),
     v_key,
     trim(p_answer_one),
     trim(p_answer_two)
   )
-  on conflict (event_id, department_id, participant_key)
+  on conflict (event_id, participant_key)
   do update set
     participant_name = excluded.participant_name,
     answer_one = excluded.answer_one,
@@ -321,8 +344,6 @@ begin
 
   return jsonb_build_object(
     'id', v_submission.id,
-    'departmentId', v_submission.department_id,
-    'departmentName', v_department_name,
     'participantName', v_submission.participant_name,
     'answerOne', v_submission.answer_one,
     'answerTwo', v_submission.answer_two,
@@ -341,7 +362,7 @@ as $$
 declare
   v_event uuid;
   v_judge public.ws_judge%rowtype;
-  v_selected uuid;
+  v_selected uuid[];
   v_result jsonb;
 begin
   v_event := public.ws_current_event_id();
@@ -356,11 +377,11 @@ begin
     raise exception 'Invalid judge token.';
   end if;
 
-  select submission_id
+  select coalesce(array_agg(v.submission_id order by v.updated_at, v.id), array[]::uuid[])
   into v_selected
-  from public.ws_vote
-  where event_id = v_event
-    and judge_id = v_judge.id;
+  from public.ws_vote v
+  where v.event_id = v_event
+    and v.judge_id = v_judge.id;
 
   select jsonb_build_object(
     'judge', jsonb_build_object(
@@ -371,21 +392,20 @@ begin
       'submissionDeadline', s.submission_deadline,
       'voteDeadline', s.vote_deadline,
       'submissionClosed', now() > s.submission_deadline,
-      'voteClosed', now() > s.vote_deadline
+      'voteClosed', now() > s.vote_deadline,
+      'votesPerJudge', s.votes_per_judge
     ),
-    'selectedSubmissionId', v_selected,
+    'selectedSubmissionIds', v_selected,
     'submissions', coalesce((
       select jsonb_agg(
         jsonb_build_object(
           'id', sub.id,
           'answerOne', sub.answer_one,
-          'answerTwo', sub.answer_two,
-          'createdAt', sub.created_at
+          'answerTwo', sub.answer_two
         )
-        order by d.sort_order, sub.created_at
+        order by sub.created_at, sub.id
       )
       from public.ws_submission sub
-      join public.ws_department d on d.id = sub.department_id
       where sub.event_id = v_event
     ), '[]'::jsonb)
   )
@@ -399,7 +419,7 @@ $$;
 
 create or replace function public.ws_cast_vote(
   p_token text,
-  p_submission_id uuid
+  p_submission_ids uuid[]
 )
 returns jsonb
 language plpgsql
@@ -410,6 +430,7 @@ declare
   v_event uuid;
   v_judge public.ws_judge%rowtype;
   v_settings public.ws_setting%rowtype;
+  v_submission_ids uuid[];
 begin
   v_event := public.ws_current_event_id();
 
@@ -432,19 +453,37 @@ begin
     raise exception 'Vote deadline has passed.';
   end if;
 
-  if not exists (
+  select coalesce(array_agg(distinct selected.submission_id), array[]::uuid[])
+  into v_submission_ids
+  from unnest(coalesce(p_submission_ids, array[]::uuid[])) as selected(submission_id)
+  where selected.submission_id is not null;
+
+  if cardinality(v_submission_ids) = 0 then
+    raise exception 'At least one submission must be selected.';
+  end if;
+
+  if cardinality(v_submission_ids) > v_settings.votes_per_judge then
+    raise exception 'Too many submissions selected.';
+  end if;
+
+  if exists (
     select 1
-    from public.ws_submission
-    where id = p_submission_id
-      and event_id = v_event
+    from unnest(v_submission_ids) as selected(submission_id)
+    left join public.ws_submission sub
+      on sub.id = selected.submission_id
+     and sub.event_id = v_event
+    where sub.id is null
   ) then
     raise exception 'Invalid submission.';
   end if;
 
+  delete from public.ws_vote
+  where event_id = v_event
+    and judge_id = v_judge.id;
+
   insert into public.ws_vote (event_id, judge_id, submission_id)
-  values (v_event, v_judge.id, p_submission_id)
-  on conflict (event_id, judge_id)
-  do update set submission_id = excluded.submission_id;
+  select v_event, v_judge.id, selected.submission_id
+  from unnest(v_submission_ids) as selected(submission_id);
 
   return public.ws_judge_view(p_token);
 end;
@@ -493,54 +532,20 @@ begin
       'submissionDeadline', s.submission_deadline,
       'voteDeadline', s.vote_deadline,
       'submissionClosed', now() > s.submission_deadline,
-      'voteClosed', now() > s.vote_deadline
+      'voteClosed', now() > s.vote_deadline,
+      'votesPerJudge', s.votes_per_judge
     ),
-    'departments', coalesce((
-      select jsonb_agg(
-        jsonb_build_object(
-          'id', d.id,
-          'name', d.name
-        )
-        order by d.sort_order, d.name
-      )
-      from public.ws_department d
-      where d.event_id = e.id
-    ), '[]'::jsonb),
     'counts', jsonb_build_object(
       'total', (
         select count(*)::int
         from public.ws_submission sub
         where sub.event_id = e.id
-      ),
-      'byDepartment', coalesce((
-        select jsonb_agg(
-          jsonb_build_object(
-            'departmentId', counted.department_id,
-            'departmentName', counted.department_name,
-            'count', counted.submission_count
-          )
-          order by counted.sort_order
-        )
-        from (
-          select d.id as department_id,
-                 d.name as department_name,
-                 d.sort_order,
-                 count(sub.id)::int as submission_count
-          from public.ws_department d
-          left join public.ws_submission sub
-            on sub.department_id = d.id
-           and sub.event_id = e.id
-          where d.event_id = e.id
-          group by d.id, d.name, d.sort_order
-        ) counted
-      ), '[]'::jsonb)
+      )
     ),
     'submissions', coalesce((
       select jsonb_agg(
         jsonb_build_object(
           'id', listed.id,
-          'departmentId', listed.department_id,
-          'departmentName', listed.department_name,
           'participantName', listed.participant_name,
           'answerOne', listed.answer_one,
           'answerTwo', listed.answer_two,
@@ -548,7 +553,7 @@ begin
           'updatedAt', listed.updated_at,
           'voteCount', listed.vote_count
         )
-        order by listed.department_sort, listed.participant_name
+        order by listed.participant_name
       )
       from public.ws_admin_submission_rows(e.id) listed
     ), '[]'::jsonb),
@@ -559,8 +564,8 @@ begin
           'name', judge_rows.name,
           'role', judge_rows.role,
           'token', judge_rows.token,
-          'selectedSubmissionId', judge_rows.selected_submission_id,
-          'selectedDepartment', judge_rows.selected_department,
+          'selectedSubmissionIds', judge_rows.selected_submission_ids,
+          'selectedCount', judge_rows.selected_count,
           'votedAt', judge_rows.voted_at
         )
         order by judge_rows.sort_order
@@ -571,8 +576,6 @@ begin
       select jsonb_agg(
         jsonb_build_object(
           'id', listed.id,
-          'departmentId', listed.department_id,
-          'departmentName', listed.department_name,
           'participantName', listed.participant_name,
           'answerOne', listed.answer_one,
           'answerTwo', listed.answer_two,
@@ -580,9 +583,10 @@ begin
           'updatedAt', listed.updated_at,
           'voteCount', listed.vote_count
         )
-        order by listed.vote_count desc, listed.department_sort, listed.created_at
+        order by listed.vote_count desc, listed.created_at, listed.participant_name
       )
       from public.ws_admin_submission_rows(e.id) listed
+      where listed.vote_count > 0
     ), '[]'::jsonb)
   )
   into v_result
@@ -597,9 +601,6 @@ $$;
 create or replace function public.ws_admin_submission_rows(p_event_id uuid)
 returns table (
   id uuid,
-  department_id uuid,
-  department_name text,
-  department_sort integer,
   participant_name text,
   answer_one text,
   answer_two text,
@@ -613,9 +614,6 @@ security definer
 set search_path = public
 as $$
   select sub.id,
-         sub.department_id,
-         d.name as department_name,
-         d.sort_order as department_sort,
          sub.participant_name,
          sub.answer_one,
          sub.answer_two,
@@ -623,10 +621,9 @@ as $$
          sub.updated_at,
          count(v.id)::int as vote_count
   from public.ws_submission sub
-  join public.ws_department d on d.id = sub.department_id
   left join public.ws_vote v on v.submission_id = sub.id
   where sub.event_id = p_event_id
-  group by sub.id, sub.department_id, d.name, d.sort_order, sub.participant_name, sub.answer_one, sub.answer_two, sub.created_at, sub.updated_at;
+  group by sub.id, sub.participant_name, sub.answer_one, sub.answer_two, sub.created_at, sub.updated_at;
 $$;
 
 create or replace function public.ws_admin_judge_rows(p_event_id uuid)
@@ -636,8 +633,8 @@ returns table (
   role text,
   token text,
   sort_order integer,
-  selected_submission_id uuid,
-  selected_department text,
+  selected_submission_ids uuid[],
+  selected_count integer,
   voted_at timestamptz
 )
 language sql
@@ -650,22 +647,25 @@ as $$
          j.role,
          j.token,
          j.sort_order,
-         v.submission_id as selected_submission_id,
-         d.name as selected_department,
-         v.updated_at as voted_at
+         coalesce(
+           array_agg(v.submission_id order by v.updated_at, v.id) filter (where v.id is not null),
+           array[]::uuid[]
+         ) as selected_submission_ids,
+         count(v.id)::int as selected_count,
+         max(v.updated_at) as voted_at
   from public.ws_judge j
   left join public.ws_vote v
     on v.judge_id = j.id
    and v.event_id = p_event_id
-  left join public.ws_submission sub on sub.id = v.submission_id
-  left join public.ws_department d on d.id = sub.department_id
-  where j.event_id = p_event_id;
+  where j.event_id = p_event_id
+  group by j.id, j.name, j.role, j.token, j.sort_order;
 $$;
 
 create or replace function public.ws_admin_update_settings(
   p_password text,
   p_submission_deadline timestamptz,
-  p_vote_deadline timestamptz
+  p_vote_deadline timestamptz,
+  p_votes_per_judge integer
 )
 returns jsonb
 language plpgsql
@@ -685,9 +685,14 @@ begin
     raise exception 'Deadlines are required.';
   end if;
 
+  if p_votes_per_judge is null or p_votes_per_judge < 1 or p_votes_per_judge > 3 then
+    raise exception 'Votes per judge must be between 1 and 3.';
+  end if;
+
   update public.ws_setting
   set submission_deadline = p_submission_deadline,
-      vote_deadline = p_vote_deadline
+      vote_deadline = p_vote_deadline,
+      votes_per_judge = p_votes_per_judge
   where event_id = v_event;
 
   return public.ws_admin_overview(p_password);

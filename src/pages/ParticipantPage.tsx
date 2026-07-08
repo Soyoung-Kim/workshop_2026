@@ -1,7 +1,7 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
-import { Save, Search, RotateCcw } from "lucide-react";
+import { FormEvent, useEffect, useState } from "react";
+import { RotateCcw, Save, Search } from "lucide-react";
 import { PageShell } from "../components/PageShell";
-import { Button, Notice, NoticeTone, SelectInput, TextArea, TextInput, Toast } from "../components/ui";
+import { Button, Notice, NoticeTone, TextArea, TextInput, Toast } from "../components/ui";
 import { AnswerKind, getAnswerPhrase } from "../lib/answers";
 import { rpcErrorMessage, supabase } from "../lib/supabase";
 import { BootstrapData, SubmissionPayload } from "../types";
@@ -13,7 +13,6 @@ export function ParticipantPage() {
   const [loading, setLoading] = useState(true);
   const [step, setStep] = useState<ParticipantStep>("identity");
   const [participantName, setParticipantName] = useState("");
-  const [departmentId, setDepartmentId] = useState("");
   const [answerOne, setAnswerOne] = useState("");
   const [answerTwo, setAnswerTwo] = useState("");
   const [foundSubmission, setFoundSubmission] = useState<SubmissionPayload | null>(null);
@@ -34,11 +33,6 @@ export function ParticipantPage() {
     return () => window.clearTimeout(timeout);
   }, [toast]);
 
-  const selectedDepartment = useMemo(
-    () => bootstrap?.departments.find((department) => department.id === departmentId) ?? null,
-    [bootstrap?.departments, departmentId],
-  );
-
   async function loadBootstrap() {
     setLoading(true);
     const { data, error } = await supabase.rpc("ws_public_bootstrap");
@@ -46,9 +40,7 @@ export function ParticipantPage() {
     if (error) {
       setStatus({ tone: "error", text: rpcErrorMessage(error) });
     } else {
-      const nextBootstrap = data as BootstrapData;
-      setBootstrap(nextBootstrap);
-      setDepartmentId((current) => current || nextBootstrap.departments[0]?.id || "");
+      setBootstrap(data as BootstrapData);
     }
 
     setLoading(false);
@@ -63,14 +55,8 @@ export function ParticipantPage() {
       return;
     }
 
-    if (!departmentId) {
-      setStatus({ tone: "warning", text: "팀을 선택해주세요." });
-      return;
-    }
-
     setSubmitting(true);
     const { data, error } = await supabase.rpc("ws_find_submission", {
-      p_department_id: departmentId,
       p_participant_name: participantName.trim(),
     });
     setSubmitting(false);
@@ -85,6 +71,7 @@ export function ParticipantPage() {
     setAnswerOne(getAnswerPhrase(submission?.answerOne ?? "", "teamLike"));
     setAnswerTwo(getAnswerPhrase(submission?.answerTwo ?? "", "teamReason"));
     setStep("editor");
+
     if (submission) {
       const message = "이전 작성 내용이 있습니다. 이전 작성 내용을 불러옵니다.";
       setStatus({ tone: "success", text: message });
@@ -112,7 +99,6 @@ export function ParticipantPage() {
 
     setSubmitting(true);
     const { data, error } = await supabase.rpc("ws_upsert_submission", {
-      p_department_id: departmentId,
       p_participant_name: participantName.trim(),
       p_answer_one: answerOnePhrase,
       p_answer_two: answerTwoPhrase,
@@ -127,6 +113,7 @@ export function ParticipantPage() {
     setFoundSubmission(data as SubmissionPayload);
     setAnswerOne(answerOnePhrase);
     setAnswerTwo(answerTwoPhrase);
+
     const message = foundSubmission ? "수정 내용이 저장되었습니다." : "저장되었습니다.";
     setStatus({ tone: "success", text: message });
     setToast({ tone: "success", text: message, key: Date.now() });
@@ -139,7 +126,11 @@ export function ParticipantPage() {
       title={bootstrap?.event.title ?? "우리 팀은 어떤 팀인가?"}
       settings={bootstrap?.settings}
     >
-      {toast ? <Toast key={toast.key} tone={toast.tone}>{toast.text}</Toast> : null}
+      {toast ? (
+        <Toast key={toast.key} tone={toast.tone}>
+          {toast.text}
+        </Toast>
+      ) : null}
       <div className="grid gap-5 lg:grid-cols-[360px_1fr]">
         <section className="rounded-lg border border-zinc-200 bg-white p-5 shadow-soft">
           <div className="mb-4 flex items-center justify-between gap-3">
@@ -163,20 +154,6 @@ export function ParticipantPage() {
                 placeholder="이름"
               />
             </label>
-            <label className="block space-y-2">
-              <span className="text-sm font-bold text-zinc-700">팀</span>
-              <SelectInput
-                value={departmentId}
-                disabled={step === "editor" || loading}
-                onChange={(event) => setDepartmentId(event.target.value)}
-              >
-                {bootstrap?.departments.map((department) => (
-                  <option key={department.id} value={department.id}>
-                    {department.name}
-                  </option>
-                ))}
-              </SelectInput>
-            </label>
             {step === "identity" ? (
               <Button className="w-full" type="submit" disabled={loading || submitting}>
                 <Search className="h-4 w-4" aria-hidden="true" />
@@ -186,11 +163,6 @@ export function ParticipantPage() {
           </form>
 
           <div className="mt-5 space-y-3">
-            {selectedDepartment ? (
-              <div className="rounded-md bg-zinc-100 px-3 py-2 text-sm font-semibold text-zinc-700">
-                {selectedDepartment.name}
-              </div>
-            ) : null}
             {bootstrap?.settings.submissionClosed ? (
               <Notice tone="warning">답변 마감 이후에는 조회만 가능합니다.</Notice>
             ) : null}
@@ -204,13 +176,13 @@ export function ParticipantPage() {
               {foundSubmission ? "답변 수정" : "답변 작성"}
             </h2>
             <span className="text-sm font-semibold text-zinc-500">
-              {step === "editor" ? participantName.trim() : "이름과 팀을 먼저 확인"}
+              {step === "editor" ? participantName.trim() : "이름을 먼저 확인"}
             </span>
           </div>
 
           {step === "identity" ? (
             <div className="flex min-h-72 items-center justify-center rounded-md border border-dashed border-zinc-300 bg-zinc-50 px-4 text-center text-sm font-semibold text-zinc-500">
-              이름과 팀을 입력하면 답변 입력란이 열립니다.
+              이름을 입력하면 답변 입력창이 열립니다.
             </div>
           ) : (
             <form className="space-y-5" onSubmit={handleSave}>
