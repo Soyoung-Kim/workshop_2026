@@ -13,6 +13,7 @@ import {
 
 export function QuizPage() {
   const [state, setState] = useState<QuizState>(() => loadQuizState());
+  const adminHref = getProjectRouteHref("admin2");
 
   useEffect(() => {
     function handleStorageChange() {
@@ -137,7 +138,7 @@ export function QuizPage() {
             <div className="flex flex-wrap gap-2">
               <a
                 className="rounded-md border border-zinc-300 bg-white px-4 py-2 text-sm font-bold text-zinc-700 transition hover:border-teal-500 hover:text-teal-800"
-                href="./admin2"
+                href={adminHref}
               >
                 퀴즈 관리
               </a>
@@ -387,4 +388,10 @@ function statusLabel(status: string) {
   }
 
   return "대기 중";
+}
+
+function getProjectRouteHref(route: string) {
+  const parts = window.location.pathname.split("/").filter(Boolean);
+  const projectBase = parts[0] === "workshop_2026" ? "/workshop_2026" : "";
+  return `${projectBase}/${route}`;
 }
