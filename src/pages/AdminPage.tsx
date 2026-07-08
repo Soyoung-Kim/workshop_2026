@@ -18,6 +18,8 @@ export function AdminPage() {
   const [votesPerJudge, setVotesPerJudge] = useState(3);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [expandedJudgeIds, setExpandedJudgeIds] = useState<string[]>([]);
+  const [revealedResultIds, setRevealedResultIds] = useState<string[]>([]);
   const [status, setStatus] = useState<{ tone: "success" | "warning" | "error"; text: string } | null>(null);
 
   const selectedSubmissions = useMemo(
@@ -112,6 +114,18 @@ export function AdminPage() {
     );
   }
 
+  function toggleJudgeSelections(judgeId: string) {
+    setExpandedJudgeIds((current) =>
+      current.includes(judgeId) ? current.filter((id) => id !== judgeId) : [...current, judgeId],
+    );
+  }
+
+  function toggleResultName(submissionId: string) {
+    setRevealedResultIds((current) =>
+      current.includes(submissionId) ? current.filter((id) => id !== submissionId) : [...current, submissionId],
+    );
+  }
+
   return (
     <PageShell
       eyebrow="관리자"
@@ -202,10 +216,6 @@ export function AdminPage() {
             <section className="rounded-lg border border-zinc-200 bg-white p-5 shadow-soft">
               <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <h2 className="text-lg font-bold text-zinc-950">결과집계</h2>
-                <Button type="button" variant="secondary" onClick={exportSubmissions}>
-                  <Download className="h-4 w-4" aria-hidden="true" />
-                  CSV 다운로드
-                </Button>
               </div>
               {selectedSubmissions.length === 0 ? (
                 <Notice tone="warning">아직 선택한 심사자가 없습니다.</Notice>
@@ -221,27 +231,44 @@ export function AdminPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {selectedSubmissions.map((submission, index) => (
-                        <tr key={submission.id} className="align-top">
-                          <Td>{index + 1}</Td>
-                          <Td>
-                            <span className="rounded bg-teal-100 px-2 py-1 text-sm font-black text-teal-900">
-                              {submission.voteCount}표
-                            </span>
-                          </Td>
-                          <Td>{submission.participantName}</Td>
-                          <Td>
-                            <div className="max-w-xl space-y-2">
-                              <p>
-                                <HighlightedAnswer kind="teamLike" text={submission.answerOne} />
-                              </p>
-                              <p className="text-zinc-500">
-                                <HighlightedAnswer kind="teamReason" text={submission.answerTwo} />
-                              </p>
-                            </div>
-                          </Td>
-                        </tr>
-                      ))}
+                      {selectedSubmissions.map((submission, index) => {
+                        const nameRevealed = revealedResultIds.includes(submission.id);
+
+                        return (
+                          <tr key={submission.id} className="align-top">
+                            <Td>{index + 1}</Td>
+                            <Td>
+                              <span className="rounded bg-teal-100 px-2 py-1 text-sm font-black text-teal-900">
+                                {submission.voteCount}표
+                              </span>
+                            </Td>
+                            <Td>
+                              <button
+                                type="button"
+                                className={`rounded-md border px-3 py-1.5 text-sm font-bold transition ${
+                                  nameRevealed
+                                    ? "border-amber-300 bg-amber-50 text-amber-900"
+                                    : "border-zinc-300 bg-zinc-50 text-zinc-500 hover:border-teal-400 hover:text-teal-800"
+                                }`}
+                                onClick={() => toggleResultName(submission.id)}
+                                aria-label={nameRevealed ? `${submission.participantName} 이름 숨기기` : "이름 보기"}
+                              >
+                                {nameRevealed ? submission.participantName : "이름 보기"}
+                              </button>
+                            </Td>
+                            <Td>
+                              <div className="max-w-xl space-y-2">
+                                <p>
+                                  <HighlightedAnswer kind="teamLike" text={submission.answerOne} />
+                                </p>
+                                <p className="text-zinc-500">
+                                  <HighlightedAnswer kind="teamReason" text={submission.answerTwo} />
+                                </p>
+                              </div>
+                            </Td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -252,32 +279,81 @@ export function AdminPage() {
               <div className="rounded-lg border border-zinc-200 bg-white p-5 shadow-soft">
                 <h2 className="text-lg font-bold text-zinc-950">평가현황</h2>
                 <div className="mt-4 space-y-2">
-                  {overview.judges.map((judge) => (
-                    <div key={judge.id} className="rounded-md border border-zinc-200 p-3">
-                      <div className="flex items-center justify-between gap-3">
-                        <div>
-                          <p className="font-bold text-zinc-950">
-                            {judge.name} {judge.role}
-                          </p>
-                          <p className="mt-1 text-sm font-medium text-zinc-500">
-                            {judge.selectedCount}/{overview.settings.votesPerJudge}개 선택
-                          </p>
+                  {overview.judges.map((judge) => {
+                    const expanded = expandedJudgeIds.includes(judge.id);
+                    const judgeSelections = overview.submissions.filter((submission) =>
+                      judge.selectedSubmissionIds.includes(submission.id),
+                    );
+
+                    return (
+                      <div key={judge.id} className="rounded-md border border-zinc-200 p-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <p className="font-bold text-zinc-950">
+                              {judge.name} {judge.role}
+                            </p>
+                            <p className="mt-1 text-sm font-medium text-zinc-500">
+                              {judge.selectedCount}/{overview.settings.votesPerJudge}개 선택
+                            </p>
+                          </div>
+                          <div className="flex shrink-0 items-center gap-2">
+                            {judge.selectedCount > 0 ? (
+                              <button
+                                type="button"
+                                className="rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-sm font-bold text-zinc-700 transition hover:border-teal-400 hover:text-teal-800"
+                                onClick={() => toggleJudgeSelections(judge.id)}
+                              >
+                                {expanded ? "닫기" : "조회"}
+                              </button>
+                            ) : null}
+                            <span
+                              className={`rounded px-2 py-1 text-xs font-bold ${
+                                judge.selectedCount > 0 ? "bg-teal-100 text-teal-800" : "bg-zinc-100 text-zinc-500"
+                              }`}
+                            >
+                              {judge.selectedCount > 0 ? "선택" : "미선택"}
+                            </span>
+                          </div>
                         </div>
-                        <span
-                          className={`rounded px-2 py-1 text-xs font-bold ${
-                            judge.selectedCount > 0 ? "bg-teal-100 text-teal-800" : "bg-zinc-100 text-zinc-500"
-                          }`}
-                        >
-                          {judge.selectedCount > 0 ? "선택" : "미선택"}
-                        </span>
+                        {judge.votedAt ? (
+                          <p className="mt-2 text-sm font-medium text-zinc-600">
+                            마지막 저장 {formatKoreanDateTime(judge.votedAt)}
+                          </p>
+                        ) : null}
+                        {expanded ? (
+                          <div className="mt-3 space-y-3 rounded-md border border-zinc-200 bg-zinc-50 p-3">
+                            {judgeSelections.length === 0 ? (
+                              <p className="text-sm font-medium text-zinc-500">선택한 답변을 찾을 수 없습니다.</p>
+                            ) : (
+                              judgeSelections.map((submission, index) => (
+                                <div key={submission.id} className="rounded-md border border-zinc-200 bg-white p-3">
+                                  <div className="mb-2 flex flex-wrap items-center gap-2">
+                                    <span className="rounded bg-zinc-100 px-2 py-1 text-xs font-bold text-zinc-700">
+                                      {index + 1}
+                                    </span>
+                                    <span className="text-sm font-bold text-zinc-950">
+                                      {submission.participantName}
+                                    </span>
+                                    <span className="text-xs font-bold text-teal-700">
+                                      {submission.voteCount}표
+                                    </span>
+                                  </div>
+                                  <div className="space-y-1 text-sm leading-6">
+                                    <p>
+                                      <HighlightedAnswer kind="teamLike" text={submission.answerOne} />
+                                    </p>
+                                    <p className="text-zinc-600">
+                                      <HighlightedAnswer kind="teamReason" text={submission.answerTwo} />
+                                    </p>
+                                  </div>
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        ) : null}
                       </div>
-                      {judge.votedAt ? (
-                        <p className="mt-2 text-sm font-medium text-zinc-600">
-                          마지막 저장 {formatKoreanDateTime(judge.votedAt)}
-                        </p>
-                      ) : null}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
 
@@ -288,6 +364,12 @@ export function AdminPage() {
                 <p className="mt-2 text-sm font-medium text-zinc-500">
                   전체 참여자 답변은 관리자 확인용입니다.
                 </p>
+                <div className="mt-3 flex justify-end">
+                  <Button type="button" variant="secondary" onClick={exportSubmissions}>
+                    <Download className="h-4 w-4" aria-hidden="true" />
+                    CSV 다운로드
+                  </Button>
+                </div>
                 <div className="mt-4 max-h-[520px] overflow-auto rounded-md border border-zinc-200">
                   <table className="min-w-full border-separate border-spacing-0 text-left text-sm">
                     <thead className="sticky top-0 bg-zinc-100">
