@@ -361,10 +361,10 @@ function QuestionStage({
 function QuestionMedia({ question }: { question: QuizQuestion }) {
   const mediaItems = question.mediaItems?.length
     ? question.mediaItems
-    : question.mediaUrl && question.mediaType
+    : question.mediaUrl
       ? [
           {
-            mediaType: question.mediaType,
+            mediaType: question.mediaType || "image",
             mediaUrl: question.mediaUrl,
             mediaCaption: question.mediaCaption,
           },
