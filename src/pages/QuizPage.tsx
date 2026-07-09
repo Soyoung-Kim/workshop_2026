@@ -376,7 +376,7 @@ function QuestionMedia({ question }: { question: QuizQuestion }) {
   }
 
   return (
-    <div className={`mx-auto mt-8 grid max-w-5xl gap-4 ${mediaItems.length > 1 ? "md:grid-cols-3" : ""}`}>
+    <div className={`mx-auto mt-8 grid gap-4 ${mediaItems.length > 1 ? "max-w-5xl md:grid-cols-3" : "max-w-xl"}`}>
       {mediaItems.map((item, index) => {
         const mediaUrl = resolveQuizMediaUrl(item.mediaUrl);
 
@@ -404,7 +404,7 @@ function QuestionMedia({ question }: { question: QuizQuestion }) {
               이미지
             </div>
             <img
-              className="mx-auto aspect-[4/3] w-full rounded-md border border-zinc-100 bg-white object-cover"
+              className="mx-auto max-h-[520px] w-full rounded-md border border-zinc-100 bg-white object-contain"
               src={mediaUrl}
               alt={item.mediaCaption || "퀴즈 이미지"}
             />

@@ -48,7 +48,7 @@ export const QUIZ_KEYS = {
   dataVersion: "quiz.dataVersion",
 };
 
-export const DEFAULT_QUIZ_DATA_VERSION = "2026-07-09-workshop-quiz-v3";
+export const DEFAULT_QUIZ_DATA_VERSION = "2026-07-09-workshop-quiz-v4";
 
 export const DEFAULT_QUIZ_CATEGORIES: QuizCategory[] = [
   {
@@ -84,6 +84,13 @@ export const DEFAULT_QUIZ_CATEGORIES: QuizCategory[] = [
     name: "추억 소환",
     description: "80~90년대 문화와 물건",
     sortOrder: 5,
+    useYn: true,
+  },
+  {
+    id: "cat_chosung",
+    name: "초성퀴즈",
+    description: "이미지를 보고 초성 정답을 맞히는 퀴즈",
+    sortOrder: 6,
     useYn: true,
   },
 ];
@@ -271,6 +278,66 @@ export const DEFAULT_QUIZ_QUESTIONS: QuizQuestion[] = [
     sortOrder: 4,
     useYn: true,
   },
+  {
+    id: "q_chosung_001",
+    categoryId: "cat_chosung",
+    question: "이미지를 보고 정답을 맞혀보세요.",
+    answer: "꾸중",
+    mediaItems: [
+      {
+        mediaType: "image",
+        mediaUrl: "quiz-assets/images/chosung-scolding.png",
+        mediaCaption: "정답 초성: ㄲㅈ",
+      },
+    ],
+    sortOrder: 1,
+    useYn: true,
+  },
+  {
+    id: "q_chosung_002",
+    categoryId: "cat_chosung",
+    question: "이미지를 보고 정답을 맞혀보세요.",
+    answer: "백수",
+    mediaItems: [
+      {
+        mediaType: "image",
+        mediaUrl: "quiz-assets/images/chosung-unemployed.png",
+        mediaCaption: "정답 초성: ㅂㅅ",
+      },
+    ],
+    sortOrder: 2,
+    useYn: true,
+  },
+  {
+    id: "q_chosung_003",
+    categoryId: "cat_chosung",
+    question: "이미지를 보고 정답을 맞혀보세요.",
+    answer: "조롱",
+    mediaItems: [
+      {
+        mediaType: "image",
+        mediaUrl: "quiz-assets/images/chosung-mocking.png",
+        mediaCaption: "정답 초성: ㅈㄹ",
+      },
+    ],
+    sortOrder: 3,
+    useYn: true,
+  },
+  {
+    id: "q_chosung_004",
+    categoryId: "cat_chosung",
+    question: "이미지를 보고 정답을 맞혀보세요.",
+    answer: "마침내",
+    mediaItems: [
+      {
+        mediaType: "image",
+        mediaUrl: "quiz-assets/images/chosung-finally.png",
+        mediaCaption: "정답 초성: ㅁㅊㄴ",
+      },
+    ],
+    sortOrder: 4,
+    useYn: true,
+  },
 ];
 
 export function loadQuizState(): QuizState {
@@ -424,9 +491,12 @@ function looksLikePreviousBundledQuestions(questions: QuizQuestion[]) {
   const memoryImageQuestion = questions.find((question) => question.id === "q_memory_003");
 
   return (
-    questions.length === 20 &&
-    Boolean(memoryImageQuestion) &&
-    !memoryImageQuestion?.mediaItems?.length &&
-    memoryImageQuestion?.question.includes("천사소녀 네티")
+    (questions.length === 20 &&
+      Boolean(memoryImageQuestion) &&
+      !memoryImageQuestion?.mediaItems?.length &&
+      memoryImageQuestion?.question.includes("천사소녀 네티")) ||
+    (questions.length === 20 &&
+      Boolean(memoryImageQuestion?.mediaItems?.length) &&
+      !questions.some((question) => question.id === "q_chosung_001"))
   );
 }
