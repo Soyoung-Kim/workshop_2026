@@ -401,16 +401,12 @@ function QuestionMedia({ question }: { question: QuizQuestion }) {
           <figure key={`${item.mediaUrl}-${index}`} className="rounded-lg border border-zinc-200 bg-white p-3">
             <div className="mb-3 flex items-center justify-center gap-2 text-sm font-black text-zinc-700">
               <ImageIcon className="h-4 w-4 text-rose-600" aria-hidden="true" />
-              이미지
             </div>
             <img
               className="mx-auto max-h-[520px] w-full rounded-md border border-zinc-100 bg-white object-contain"
               src={mediaUrl}
               alt={item.mediaCaption || "퀴즈 이미지"}
             />
-            {item.mediaCaption ? (
-              <figcaption className="mt-2 text-sm font-black text-zinc-700">{item.mediaCaption}</figcaption>
-            ) : null}
           </figure>
         );
       })}
