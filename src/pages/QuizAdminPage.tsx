@@ -677,7 +677,12 @@ export function QuizAdminPage() {
                           <p className="max-w-xs whitespace-pre-wrap text-zinc-600">{question.answer}</p>
                         </Td>
                         <Td>
-                          {question.mediaUrl ? (
+                          {question.mediaItems?.length ? (
+                            <p className="max-w-[180px] break-words text-xs font-semibold text-zinc-600">
+                              {question.mediaItems.every((item) => item.mediaType === "audio") ? "오디오" : "이미지"}{" "}
+                              {question.mediaItems.length}개
+                            </p>
+                          ) : question.mediaUrl ? (
                             <p className="max-w-[180px] break-words text-xs font-semibold text-zinc-600">
                               {question.mediaType === "audio" ? "오디오" : "이미지"} · {question.mediaUrl}
                             </p>

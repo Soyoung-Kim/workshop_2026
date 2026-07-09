@@ -359,49 +359,63 @@ function QuestionStage({
 }
 
 function QuestionMedia({ question }: { question: QuizQuestion }) {
-  if (!question.mediaUrl || !question.mediaType) {
+  const mediaItems = question.mediaItems?.length
+    ? question.mediaItems
+    : question.mediaUrl && question.mediaType
+      ? [
+          {
+            mediaType: question.mediaType,
+            mediaUrl: question.mediaUrl,
+            mediaCaption: question.mediaCaption,
+          },
+        ]
+      : [];
+
+  if (mediaItems.length === 0) {
     return null;
   }
 
-  const mediaUrl = resolveQuizMediaUrl(question.mediaUrl);
+  return (
+    <div className={`mx-auto mt-8 grid max-w-5xl gap-4 ${mediaItems.length > 1 ? "md:grid-cols-3" : ""}`}>
+      {mediaItems.map((item, index) => {
+        const mediaUrl = resolveQuizMediaUrl(item.mediaUrl);
 
-  if (question.mediaType === "audio") {
-    return (
-      <div className="mx-auto mt-8 max-w-2xl rounded-lg border border-zinc-200 bg-white p-4 text-left">
-        <div className="mb-3 flex items-center gap-2 text-sm font-black text-zinc-700">
-          <Volume2 className="h-4 w-4 text-rose-600" aria-hidden="true" />
-          사운드
-        </div>
-        <audio className="w-full" controls src={mediaUrl}>
-          오디오를 재생할 수 없습니다.
-        </audio>
-        {question.mediaCaption ? (
-          <p className="mt-2 text-sm font-semibold text-zinc-500">{question.mediaCaption}</p>
-        ) : null}
-      </div>
-    );
-  }
+        if (item.mediaType === "audio") {
+          return (
+            <div key={`${item.mediaUrl}-${index}`} className="rounded-lg border border-zinc-200 bg-white p-4 text-left">
+              <div className="mb-3 flex items-center gap-2 text-sm font-black text-zinc-700">
+                <Volume2 className="h-4 w-4 text-rose-600" aria-hidden="true" />
+                사운드
+              </div>
+              <audio className="w-full" controls src={mediaUrl}>
+                오디오를 재생할 수 없습니다.
+              </audio>
+              {item.mediaCaption ? (
+                <p className="mt-2 text-sm font-semibold text-zinc-500">{item.mediaCaption}</p>
+              ) : null}
+            </div>
+          );
+        }
 
-  if (question.mediaType === "image") {
-    return (
-      <figure className="mx-auto mt-8 max-w-3xl">
-        <div className="mb-3 flex items-center justify-center gap-2 text-sm font-black text-zinc-700">
-          <ImageIcon className="h-4 w-4 text-rose-600" aria-hidden="true" />
-          이미지
-        </div>
-        <img
-          className="mx-auto max-h-[420px] max-w-full rounded-lg border border-zinc-200 bg-white object-contain"
-          src={mediaUrl}
-          alt={question.mediaCaption || "퀴즈 이미지"}
-        />
-        {question.mediaCaption ? (
-          <figcaption className="mt-2 text-sm font-semibold text-zinc-500">{question.mediaCaption}</figcaption>
-        ) : null}
-      </figure>
-    );
-  }
-
-  return null;
+        return (
+          <figure key={`${item.mediaUrl}-${index}`} className="rounded-lg border border-zinc-200 bg-white p-3">
+            <div className="mb-3 flex items-center justify-center gap-2 text-sm font-black text-zinc-700">
+              <ImageIcon className="h-4 w-4 text-rose-600" aria-hidden="true" />
+              이미지
+            </div>
+            <img
+              className="mx-auto aspect-[4/3] w-full rounded-md border border-zinc-100 bg-white object-cover"
+              src={mediaUrl}
+              alt={item.mediaCaption || "퀴즈 이미지"}
+            />
+            {item.mediaCaption ? (
+              <figcaption className="mt-2 text-sm font-black text-zinc-700">{item.mediaCaption}</figcaption>
+            ) : null}
+          </figure>
+        );
+      })}
+    </div>
+  );
 }
 
 function StatusPill({ label, value, tone }: { label: string; value: string; tone: "teal" | "amber" | "rose" }) {

@@ -8,6 +8,12 @@ export type QuizCategory = {
   useYn: boolean;
 };
 
+export type QuizMediaItem = {
+  mediaType: "image" | "audio";
+  mediaUrl: string;
+  mediaCaption?: string;
+};
+
 export type QuizQuestion = {
   id: string;
   categoryId: string;
@@ -16,6 +22,7 @@ export type QuizQuestion = {
   mediaType?: "" | "image" | "audio";
   mediaUrl?: string;
   mediaCaption?: string;
+  mediaItems?: QuizMediaItem[];
   sortOrder: number;
   useYn: boolean;
 };
@@ -41,7 +48,7 @@ export const QUIZ_KEYS = {
   dataVersion: "quiz.dataVersion",
 };
 
-export const DEFAULT_QUIZ_DATA_VERSION = "2026-07-09-workshop-quiz-v2";
+export const DEFAULT_QUIZ_DATA_VERSION = "2026-07-09-workshop-quiz-v3";
 
 export const DEFAULT_QUIZ_CATEGORIES: QuizCategory[] = [
   {
@@ -234,8 +241,25 @@ export const DEFAULT_QUIZ_QUESTIONS: QuizQuestion[] = [
   {
     id: "q_memory_003",
     categoryId: "cat_memory",
-    question: "다음 추억의 프로그램 또는 캐릭터의 이름을 모두 말하세요.\n\n천사소녀 네티\n달려라 하니\n날아라 슈퍼보드\n아기공룡 둘리\n슬램덩크",
-    answer: "프로그램명 그대로\n\n이미지 파일이 있으면 관리자에서 이미지 URL을 연결해 사용할 수 있습니다.",
+    question: "다음 추억의 애니메이션 이름을 각각 맞혀보세요.",
+    answer: "세일러문\n카드캡터 체리\n시간탐험대",
+    mediaItems: [
+      {
+        mediaType: "image",
+        mediaUrl: "quiz-assets/images/sailor-moon.png",
+        mediaCaption: "세일러문",
+      },
+      {
+        mediaType: "image",
+        mediaUrl: "quiz-assets/images/cardcaptor-cherry.png",
+        mediaCaption: "카드캡터 체리",
+      },
+      {
+        mediaType: "image",
+        mediaUrl: "quiz-assets/images/time-quest.png",
+        mediaCaption: "시간탐험대",
+      },
+    ],
     sortOrder: 3,
     useYn: true,
   },
@@ -253,8 +277,11 @@ export function loadQuizState(): QuizState {
   const hasStoredCategories = Boolean(window.localStorage.getItem(QUIZ_KEYS.categories));
   const hasStoredQuestions = Boolean(window.localStorage.getItem(QUIZ_KEYS.questions));
   const storedVersion = window.localStorage.getItem(QUIZ_KEYS.dataVersion);
+  const storedQuestions = readArray<QuizQuestion>(QUIZ_KEYS.questions, []);
   const shouldReplaceOldBundledData =
-    !storedVersion && hasStoredQuestions && looksLikePreviousBundledQuestions(readArray<QuizQuestion>(QUIZ_KEYS.questions, []));
+    hasStoredQuestions &&
+    ((!storedVersion && looksLikeInitialBundledQuestions(storedQuestions)) ||
+      (storedVersion !== DEFAULT_QUIZ_DATA_VERSION && looksLikePreviousBundledQuestions(storedQuestions)));
   let categories = readArray<QuizCategory>(QUIZ_KEYS.categories, DEFAULT_QUIZ_CATEGORIES);
   let questions = readArray<QuizQuestion>(QUIZ_KEYS.questions, DEFAULT_QUIZ_QUESTIONS);
 
@@ -384,11 +411,22 @@ function readSessionStatus(): QuizSessionStatus {
   return "READY";
 }
 
-function looksLikePreviousBundledQuestions(questions: QuizQuestion[]) {
+function looksLikeInitialBundledQuestions(questions: QuizQuestion[]) {
   return (
     questions.length === 7 &&
     questions.some((question) => question.id === "q_it_002" && question.answer === "Simple Storage Service") &&
     questions.some((question) => question.id === "q_new_001") &&
     !questions.some((question) => question.id === "q_person_004")
+  );
+}
+
+function looksLikePreviousBundledQuestions(questions: QuizQuestion[]) {
+  const memoryImageQuestion = questions.find((question) => question.id === "q_memory_003");
+
+  return (
+    questions.length === 20 &&
+    Boolean(memoryImageQuestion) &&
+    !memoryImageQuestion?.mediaItems?.length &&
+    memoryImageQuestion?.question.includes("천사소녀 네티")
   );
 }
