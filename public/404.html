@@ -7,7 +7,7 @@
       (function () {
         var parts = window.location.pathname.split("/").filter(Boolean);
         var last = parts[parts.length - 1] || "";
-        var knownRoute = last === "judge" || last === "admin" || last === "admin2" || last === "quize" || last === "quiz";
+        var knownRoute = last === "judge" || last === "admin" || last === "admin2" || last === "quize" || last === "quiz" || last === "timetable";
         var base = knownRoute ? "/" + parts.slice(0, -1).join("/") : "";
         window.sessionStorage.setItem("ws:redirect", window.location.href);
         window.location.replace((base || "") + "/");

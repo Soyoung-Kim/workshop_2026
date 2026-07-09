@@ -3,6 +3,7 @@ import { JudgePage } from "./pages/JudgePage";
 import { ParticipantPage } from "./pages/ParticipantPage";
 import { QuizAdminPage } from "./pages/QuizAdminPage";
 import { QuizPage } from "./pages/QuizPage";
+import { TimetablePage } from "./pages/TimetablePage";
 
 export default function App() {
   const pathname = window.location.pathname.toLowerCase();
@@ -21,6 +22,10 @@ export default function App() {
 
   if (pathname.endsWith("/quize") || pathname.endsWith("/quiz")) {
     return <QuizPage />;
+  }
+
+  if (pathname.endsWith("/timetable")) {
+    return <TimetablePage />;
   }
 
   return <ParticipantPage />;
