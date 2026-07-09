@@ -22,6 +22,9 @@ export function PageShell({ eyebrow, title, settings, children }: PageShellProps
               </h1>
             </div>
             <nav className="flex flex-wrap gap-2 text-sm">
+              <a className="rounded-md border border-zinc-200 px-3 py-2 font-medium text-zinc-700 hover:border-teal-400 hover:text-teal-800" href="./timetable">
+                일정표
+              </a>
               <a className="rounded-md border border-zinc-200 px-3 py-2 font-medium text-zinc-700 hover:border-teal-400 hover:text-teal-800" href="./">
                 참여자
               </a>
