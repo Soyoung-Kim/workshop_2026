@@ -48,7 +48,7 @@ export const QUIZ_KEYS = {
   dataVersion: "quiz.dataVersion",
 };
 
-export const DEFAULT_QUIZ_DATA_VERSION = "2026-07-10-workshop-quiz-v5";
+export const DEFAULT_QUIZ_DATA_VERSION = "2026-07-10-workshop-quiz-v6";
 
 export const DEFAULT_QUIZ_CATEGORIES: QuizCategory[] = [
   {
@@ -67,8 +67,8 @@ export const DEFAULT_QUIZ_CATEGORIES: QuizCategory[] = [
   },
   {
     id: "cat_nonsense",
-    name: "넌센스",
-    description: "말장난과 순발력 퀴즈",
+    name: "넌센스/초성퀴즈",
+    description: "말장난, 그림, 초성 순발력 퀴즈",
     sortOrder: 3,
     useYn: true,
   },
@@ -77,13 +77,6 @@ export const DEFAULT_QUIZ_CATEGORIES: QuizCategory[] = [
     name: "추억 소환",
     description: "80~90년대 문화와 물건",
     sortOrder: 5,
-    useYn: true,
-  },
-  {
-    id: "cat_chosung",
-    name: "초성퀴즈",
-    description: "이미지를 보고 초성 정답을 맞히는 퀴즈",
-    sortOrder: 6,
     useYn: true,
   },
 ];
@@ -229,7 +222,7 @@ export const DEFAULT_QUIZ_QUESTIONS: QuizQuestion[] = [
   },
   {
     id: "q_chosung_001",
-    categoryId: "cat_chosung",
+    categoryId: "cat_nonsense",
     question: "이미지를 보고 정답을 맞혀보세요.",
     answer: "꾸중",
     mediaItems: [
@@ -239,12 +232,12 @@ export const DEFAULT_QUIZ_QUESTIONS: QuizQuestion[] = [
         mediaCaption: "정답 초성: ㄲㅈ",
       },
     ],
-    sortOrder: 1,
+    sortOrder: 5,
     useYn: true,
   },
   {
     id: "q_chosung_002",
-    categoryId: "cat_chosung",
+    categoryId: "cat_nonsense",
     question: "이미지를 보고 정답을 맞혀보세요.",
     answer: "백수",
     mediaItems: [
@@ -254,12 +247,12 @@ export const DEFAULT_QUIZ_QUESTIONS: QuizQuestion[] = [
         mediaCaption: "정답 초성: ㅂㅅ",
       },
     ],
-    sortOrder: 2,
+    sortOrder: 6,
     useYn: true,
   },
   {
     id: "q_chosung_003",
-    categoryId: "cat_chosung",
+    categoryId: "cat_nonsense",
     question: "이미지를 보고 정답을 맞혀보세요.",
     answer: "조롱",
     mediaItems: [
@@ -269,12 +262,12 @@ export const DEFAULT_QUIZ_QUESTIONS: QuizQuestion[] = [
         mediaCaption: "정답 초성: ㅈㄹ",
       },
     ],
-    sortOrder: 3,
+    sortOrder: 7,
     useYn: true,
   },
   {
     id: "q_chosung_004",
-    categoryId: "cat_chosung",
+    categoryId: "cat_nonsense",
     question: "이미지를 보고 정답을 맞혀보세요.",
     answer: "마침내",
     mediaItems: [
@@ -284,7 +277,7 @@ export const DEFAULT_QUIZ_QUESTIONS: QuizQuestion[] = [
         mediaCaption: "정답 초성: ㅁㅊㄴ",
       },
     ],
-    sortOrder: 4,
+    sortOrder: 8,
     useYn: true,
   },
 ];
@@ -449,6 +442,8 @@ function looksLikePreviousBundledQuestions(questions: QuizQuestion[]) {
       !questions.some((question) => question.id === "q_chosung_001")) ||
     (questions.length === 24 &&
       questions.some((question) => question.id === "q_new_001") &&
-      questions.some((question) => question.id === "q_chosung_001"))
+      questions.some((question) => question.id === "q_chosung_001")) ||
+    (questions.length === 18 &&
+      questions.some((question) => question.id === "q_chosung_001" && question.categoryId === "cat_chosung"))
   );
 }
