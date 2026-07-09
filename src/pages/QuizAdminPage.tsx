@@ -33,6 +33,9 @@ type QuestionForm = {
   categoryId: string;
   question: string;
   answer: string;
+  mediaType: "" | "image" | "audio";
+  mediaUrl: string;
+  mediaCaption: string;
   sortOrder: number;
   useYn: boolean;
 };
@@ -48,6 +51,9 @@ const emptyQuestionForm: QuestionForm = {
   categoryId: "",
   question: "",
   answer: "",
+  mediaType: "",
+  mediaUrl: "",
+  mediaCaption: "",
   sortOrder: 1,
   useYn: true,
 };
@@ -194,6 +200,9 @@ export function QuizAdminPage() {
                 categoryId: questionForm.categoryId,
                 question: questionForm.question.trim(),
                 answer: questionForm.answer.trim(),
+                mediaType: questionForm.mediaType,
+                mediaUrl: questionForm.mediaUrl.trim(),
+                mediaCaption: questionForm.mediaCaption.trim(),
                 sortOrder: questionForm.sortOrder || 0,
                 useYn: questionForm.useYn,
               }
@@ -206,6 +215,9 @@ export function QuizAdminPage() {
             categoryId: questionForm.categoryId,
             question: questionForm.question.trim(),
             answer: questionForm.answer.trim(),
+            mediaType: questionForm.mediaType,
+            mediaUrl: questionForm.mediaUrl.trim(),
+            mediaCaption: questionForm.mediaCaption.trim(),
             sortOrder: questionForm.sortOrder || questions.length + 1,
             useYn: questionForm.useYn,
           },
@@ -224,6 +236,9 @@ export function QuizAdminPage() {
       categoryId: question.categoryId,
       question: question.question,
       answer: question.answer,
+      mediaType: question.mediaType || "",
+      mediaUrl: question.mediaUrl || "",
+      mediaCaption: question.mediaCaption || "",
       sortOrder: question.sortOrder,
       useYn: question.useYn,
     });
@@ -527,7 +542,7 @@ export function QuizAdminPage() {
             <section className="rounded-lg border border-zinc-200 bg-white p-5 shadow-soft">
               <h2 className="text-lg font-bold text-zinc-950">문제 관리</h2>
               <form className="mt-4 space-y-3" onSubmit={saveQuestion}>
-                <div className="grid gap-3 lg:grid-cols-[220px_120px_120px]">
+                <div className="grid gap-3 lg:grid-cols-[220px_140px_120px_120px]">
                   <label className="block space-y-2">
                     <span className="text-sm font-bold text-zinc-700">카테고리</span>
                     <SelectInput
@@ -542,6 +557,22 @@ export function QuizAdminPage() {
                           {category.name}
                         </option>
                       ))}
+                    </SelectInput>
+                  </label>
+                  <label className="block space-y-2">
+                    <span className="text-sm font-bold text-zinc-700">미디어 유형</span>
+                    <SelectInput
+                      value={questionForm.mediaType}
+                      onChange={(event) =>
+                        setQuestionForm((current) => ({
+                          ...current,
+                          mediaType: event.target.value as QuestionForm["mediaType"],
+                        }))
+                      }
+                    >
+                      <option value="">없음</option>
+                      <option value="image">이미지</option>
+                      <option value="audio">오디오</option>
                     </SelectInput>
                   </label>
                   <label className="block space-y-2">
@@ -565,6 +596,28 @@ export function QuizAdminPage() {
                       <option value="true">사용</option>
                       <option value="false">미사용</option>
                     </SelectInput>
+                  </label>
+                </div>
+                <div className="grid gap-3 lg:grid-cols-2">
+                  <label className="block space-y-2">
+                    <span className="text-sm font-bold text-zinc-700">미디어 URL</span>
+                    <TextInput
+                      value={questionForm.mediaUrl}
+                      onChange={(event) =>
+                        setQuestionForm((current) => ({ ...current, mediaUrl: event.target.value }))
+                      }
+                      placeholder="예: quiz-assets/sound/modem.mp3"
+                    />
+                  </label>
+                  <label className="block space-y-2">
+                    <span className="text-sm font-bold text-zinc-700">미디어 설명</span>
+                    <TextInput
+                      value={questionForm.mediaCaption}
+                      onChange={(event) =>
+                        setQuestionForm((current) => ({ ...current, mediaCaption: event.target.value }))
+                      }
+                      placeholder="예: 모뎀 연결음"
+                    />
                   </label>
                 </div>
                 <div className="grid gap-3 lg:grid-cols-2">
@@ -607,6 +660,7 @@ export function QuizAdminPage() {
                       <Th>카테고리</Th>
                       <Th>문제</Th>
                       <Th>정답</Th>
+                      <Th>미디어</Th>
                       <Th>사용</Th>
                       <Th>순서</Th>
                       <Th>관리</Th>
@@ -621,6 +675,15 @@ export function QuizAdminPage() {
                         </Td>
                         <Td>
                           <p className="max-w-xs whitespace-pre-wrap text-zinc-600">{question.answer}</p>
+                        </Td>
+                        <Td>
+                          {question.mediaUrl ? (
+                            <p className="max-w-[180px] break-words text-xs font-semibold text-zinc-600">
+                              {question.mediaType === "audio" ? "오디오" : "이미지"} · {question.mediaUrl}
+                            </p>
+                          ) : (
+                            <span className="text-zinc-400">없음</span>
+                          )}
                         </Td>
                         <Td>{question.useYn ? "사용" : "미사용"}</Td>
                         <Td>{question.sortOrder}</Td>

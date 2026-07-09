@@ -13,6 +13,9 @@ export type QuizQuestion = {
   categoryId: string;
   question: string;
   answer: string;
+  mediaType?: "" | "image" | "audio";
+  mediaUrl?: string;
+  mediaCaption?: string;
   sortOrder: number;
   useYn: boolean;
 };
@@ -35,7 +38,10 @@ export const QUIZ_KEYS = {
   selectedCategoryId: "quiz.selectedCategoryId",
   currentQuestionId: "quiz.currentQuestionId",
   isAnswerVisible: "quiz.isAnswerVisible",
+  dataVersion: "quiz.dataVersion",
 };
+
+export const DEFAULT_QUIZ_DATA_VERSION = "2026-07-09-workshop-quiz-v2";
 
 export const DEFAULT_QUIZ_CATEGORIES: QuizCategory[] = [
   {
@@ -79,15 +85,39 @@ export const DEFAULT_QUIZ_QUESTIONS: QuizQuestion[] = [
   {
     id: "q_person_001",
     categoryId: "cat_person",
-    question: "오늘 첫 번째 발표자는 누구였을까요?",
-    answer: "사전 입력",
+    question: "오늘 첫 번째 발표를 진행한 사람은 누구일까요?",
+    answer: "행사 당일 입력",
     sortOrder: 1,
+    useYn: true,
+  },
+  {
+    id: "q_person_002",
+    categoryId: "cat_person",
+    question: "오늘 사회자는 누구일까요?",
+    answer: "행사 당일 입력",
+    sortOrder: 2,
+    useYn: true,
+  },
+  {
+    id: "q_person_003",
+    categoryId: "cat_person",
+    question: "오늘 발표한 OO님의 생일은 언제일까요?",
+    answer: "행사 당일 입력",
+    sortOrder: 3,
+    useYn: true,
+  },
+  {
+    id: "q_person_004",
+    categoryId: "cat_person",
+    question: "오늘 발표한 OO님의 MBTI는 무엇일까요?",
+    answer: "행사 당일 입력",
+    sortOrder: 4,
     useYn: true,
   },
   {
     id: "q_it_001",
     categoryId: "cat_it",
-    question: "AI는 어떤 말의 약자일까요?",
+    question: "AI는 무엇의 약자일까요?",
     answer: "Artificial Intelligence",
     sortOrder: 1,
     useYn: true,
@@ -95,9 +125,25 @@ export const DEFAULT_QUIZ_QUESTIONS: QuizQuestion[] = [
   {
     id: "q_it_002",
     categoryId: "cat_it",
-    question: "AWS에서 S3는 어떤 말의 약자일까요?",
-    answer: "Simple Storage Service",
+    question: "AWS의 S3에서 S는 무엇의 약자일까요?",
+    answer: "Simple\n\n(Simple Storage Service)",
     sortOrder: 2,
+    useYn: true,
+  },
+  {
+    id: "q_it_003",
+    categoryId: "cat_it",
+    question: "URL에서 U는 무엇의 약자일까요?",
+    answer: "Uniform\n\n(Uniform Resource Locator)",
+    sortOrder: 3,
+    useYn: true,
+  },
+  {
+    id: "q_it_004",
+    categoryId: "cat_it",
+    question: "HTTP에서 H는 무엇의 약자일까요?",
+    answer: "HyperText\n\n(HyperText Transfer Protocol)",
+    sortOrder: 4,
     useYn: true,
   },
   {
@@ -117,34 +163,113 @@ export const DEFAULT_QUIZ_QUESTIONS: QuizQuestion[] = [
     useYn: true,
   },
   {
+    id: "q_nonsense_003",
+    categoryId: "cat_nonsense",
+    question: "왕이 넘어지면?",
+    answer: "킹콩",
+    sortOrder: 3,
+    useYn: true,
+  },
+  {
+    id: "q_nonsense_004",
+    categoryId: "cat_nonsense",
+    question: "오리가 얼면?",
+    answer: "언덕",
+    sortOrder: 4,
+    useYn: true,
+  },
+  {
     id: "q_new_001",
     categoryId: "cat_new_words",
-    question: "다음 신조어의 뜻을 모두 맞혀보세요. 럭키비키, 원영적 사고, 긁?, 영크크, 늙크크",
+    question: "다음 신조어의 뜻을 모두 말하세요.\n\n럭키비키\n원영적 사고\n긁?\n영크크\n늙크크",
     answer:
-      "럭키비키: 긍정적으로 받아들이는 태도 / 원영적 사고: 부정적 상황도 긍정적으로 해석 / 긁?: 발끈했네 / 영크크: 젊은 감성이라 웃긴 것 / 늙크크: 아재 감성인데 웃긴 것",
+      "럭키비키 -> 어떤 상황이든 긍정적으로 받아들이는 태도\n원영적 사고 -> 부정적인 상황도 긍정적으로 해석하는 사고\n긁? -> 상대가 발끈했거나 자극받았다는 의미\n영크크 -> 젊은 감성이라 웃긴 것\n늙크크 -> 아재 감성인데 웃긴 것",
     sortOrder: 1,
+    useYn: true,
+  },
+  {
+    id: "q_new_002",
+    categoryId: "cat_new_words",
+    question: "다음 신조어의 뜻을 모두 말하세요.\n\n나갈겨\nMZ력\n억텐\n알잘딱깔센\n텍스트힙",
+    answer:
+      "나갈겨 -> 과감하게 해버려\nMZ력 -> 트렌디한 감각\n억텐 -> 억지 텐션\n알잘딱깔센 -> 알아서 잘 딱 깔끔하고 센스 있게\n텍스트힙 -> 독서나 글을 멋있게 소비하는 트렌드",
+    sortOrder: 2,
+    useYn: true,
+  },
+  {
+    id: "q_new_003",
+    categoryId: "cat_new_words",
+    question: "다음 신조어의 뜻을 모두 말하세요.\n\n스불재\n중꺾마\n꾸안꾸\nJMT\nTMI",
+    answer:
+      "스불재 -> 스스로 불러온 재앙\n중꺾마 -> 중요한 건 꺾이지 않는 마음\n꾸안꾸 -> 꾸민 듯 안 꾸민 듯\nJMT -> 정말 맛있다\nTMI -> 너무 많은 정보",
+    sortOrder: 3,
+    useYn: true,
+  },
+  {
+    id: "q_new_004",
+    categoryId: "cat_new_words",
+    question: "다음 신조어의 뜻을 모두 말하세요.\n\n아아\n얼죽아\n오운완\n킹받네\n갓생",
+    answer:
+      "아아 -> 아이스 아메리카노\n얼죽아 -> 얼어 죽어도 아이스 아메리카노\n오운완 -> 오늘 운동 완료\n킹받네 -> 매우 열받네\n갓생 -> 성실하고 계획적인 삶",
+    sortOrder: 4,
     useYn: true,
   },
   {
     id: "q_memory_001",
     categoryId: "cat_memory",
-    question: "다음 숫자 암호의 의미를 모두 맞혀보세요. 486, 1004, 8282, 7942, 0024",
-    answer: "486: 사랑해 / 1004: 천사 / 8282: 빨리빨리 / 7942: 친구사이 / 0024: 이 세상에 하나뿐인 사랑",
+    question: "다음 숫자의 의미를 모두 맞혀보세요.\n\n486\n1004\n8282\n7942\n0024",
+    answer: "486 -> 사랑해\n1004 -> 천사\n8282 -> 빨리빨리\n7942 -> 친구사이\n0024 -> 이 세상에 하나뿐인 사랑",
     sortOrder: 1,
+    useYn: true,
+  },
+  {
+    id: "q_memory_002",
+    categoryId: "cat_memory",
+    question: "다음 물건의 이름과 용도를 모두 말하세요.\n\n삐삐\n플로피디스크\n워크맨\n공중전화카드\n카세트테이프",
+    answer:
+      "삐삐 -> 호출기\n플로피디스크 -> 파일 저장\n워크맨 -> 휴대용 카세트 플레이어\n공중전화카드 -> 공중전화 사용\n카세트테이프 -> 음악 녹음 및 재생",
+    sortOrder: 2,
+    useYn: true,
+  },
+  {
+    id: "q_memory_003",
+    categoryId: "cat_memory",
+    question: "다음 추억의 프로그램 또는 캐릭터의 이름을 모두 말하세요.\n\n천사소녀 네티\n달려라 하니\n날아라 슈퍼보드\n아기공룡 둘리\n슬램덩크",
+    answer: "프로그램명 그대로\n\n이미지 파일이 있으면 관리자에서 이미지 URL을 연결해 사용할 수 있습니다.",
+    sortOrder: 3,
+    useYn: true,
+  },
+  {
+    id: "q_memory_004",
+    categoryId: "cat_memory",
+    question: "다음 소리의 정체를 맞혀보세요.\n\n모뎀 연결음\n플로피디스크 읽는 소리\n삐삐 호출음\n윈도우98 시작음\n공중전화 동전 투입음",
+    answer: "각각 해당 소리의 이름\n\n오디오 파일이 있으면 관리자에서 오디오 URL을 연결해 사용할 수 있습니다.",
+    sortOrder: 4,
     useYn: true,
   },
 ];
 
 export function loadQuizState(): QuizState {
-  const categories = readArray<QuizCategory>(QUIZ_KEYS.categories, DEFAULT_QUIZ_CATEGORIES);
-  const questions = readArray<QuizQuestion>(QUIZ_KEYS.questions, DEFAULT_QUIZ_QUESTIONS);
+  const hasStoredCategories = Boolean(window.localStorage.getItem(QUIZ_KEYS.categories));
+  const hasStoredQuestions = Boolean(window.localStorage.getItem(QUIZ_KEYS.questions));
+  const storedVersion = window.localStorage.getItem(QUIZ_KEYS.dataVersion);
+  const shouldReplaceOldBundledData =
+    !storedVersion && hasStoredQuestions && looksLikePreviousBundledQuestions(readArray<QuizQuestion>(QUIZ_KEYS.questions, []));
+  let categories = readArray<QuizCategory>(QUIZ_KEYS.categories, DEFAULT_QUIZ_CATEGORIES);
+  let questions = readArray<QuizQuestion>(QUIZ_KEYS.questions, DEFAULT_QUIZ_QUESTIONS);
 
-  if (!window.localStorage.getItem(QUIZ_KEYS.categories)) {
+  if (!hasStoredCategories || shouldReplaceOldBundledData) {
+    categories = DEFAULT_QUIZ_CATEGORIES;
     saveQuizCategories(categories);
   }
 
-  if (!window.localStorage.getItem(QUIZ_KEYS.questions)) {
+  if (!hasStoredQuestions || shouldReplaceOldBundledData) {
+    questions = DEFAULT_QUIZ_QUESTIONS;
     saveQuizQuestions(questions);
+  }
+
+  if (!storedVersion || shouldReplaceOldBundledData) {
+    window.localStorage.setItem(QUIZ_KEYS.dataVersion, DEFAULT_QUIZ_DATA_VERSION);
   }
 
   return {
@@ -160,10 +285,12 @@ export function loadQuizState(): QuizState {
 
 export function saveQuizCategories(categories: QuizCategory[]) {
   window.localStorage.setItem(QUIZ_KEYS.categories, JSON.stringify(sortCategories(categories)));
+  window.localStorage.setItem(QUIZ_KEYS.dataVersion, DEFAULT_QUIZ_DATA_VERSION);
 }
 
 export function saveQuizQuestions(questions: QuizQuestion[]) {
   window.localStorage.setItem(QUIZ_KEYS.questions, JSON.stringify(sortQuestions(questions)));
+  window.localStorage.setItem(QUIZ_KEYS.dataVersion, DEFAULT_QUIZ_DATA_VERSION);
 }
 
 export function saveUsedQuestionIds(questionIds: string[]) {
@@ -255,4 +382,13 @@ function readSessionStatus(): QuizSessionStatus {
   }
 
   return "READY";
+}
+
+function looksLikePreviousBundledQuestions(questions: QuizQuestion[]) {
+  return (
+    questions.length === 7 &&
+    questions.some((question) => question.id === "q_it_002" && question.answer === "Simple Storage Service") &&
+    questions.some((question) => question.id === "q_new_001") &&
+    !questions.some((question) => question.id === "q_person_004")
+  );
 }

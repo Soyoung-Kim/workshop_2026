@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Eye, Play, RotateCcw, Shuffle, Square, TimerReset } from "lucide-react";
+import { Eye, Image as ImageIcon, Play, Shuffle, Square, TimerReset, Volume2 } from "lucide-react";
 import {
   loadQuizState,
   QuizCategory,
@@ -323,6 +323,7 @@ function QuestionStage({
         <h2 className="mt-4 whitespace-pre-wrap break-words text-3xl font-black leading-tight tracking-normal text-zinc-950 sm:text-5xl">
           {question.question}
         </h2>
+        <QuestionMedia question={question} />
       </div>
 
       <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:justify-center">
@@ -355,6 +356,52 @@ function QuestionStage({
       ) : null}
     </section>
   );
+}
+
+function QuestionMedia({ question }: { question: QuizQuestion }) {
+  if (!question.mediaUrl || !question.mediaType) {
+    return null;
+  }
+
+  const mediaUrl = resolveQuizMediaUrl(question.mediaUrl);
+
+  if (question.mediaType === "audio") {
+    return (
+      <div className="mx-auto mt-8 max-w-2xl rounded-lg border border-zinc-200 bg-white p-4 text-left">
+        <div className="mb-3 flex items-center gap-2 text-sm font-black text-zinc-700">
+          <Volume2 className="h-4 w-4 text-rose-600" aria-hidden="true" />
+          사운드
+        </div>
+        <audio className="w-full" controls src={mediaUrl}>
+          오디오를 재생할 수 없습니다.
+        </audio>
+        {question.mediaCaption ? (
+          <p className="mt-2 text-sm font-semibold text-zinc-500">{question.mediaCaption}</p>
+        ) : null}
+      </div>
+    );
+  }
+
+  if (question.mediaType === "image") {
+    return (
+      <figure className="mx-auto mt-8 max-w-3xl">
+        <div className="mb-3 flex items-center justify-center gap-2 text-sm font-black text-zinc-700">
+          <ImageIcon className="h-4 w-4 text-rose-600" aria-hidden="true" />
+          이미지
+        </div>
+        <img
+          className="mx-auto max-h-[420px] max-w-full rounded-lg border border-zinc-200 bg-white object-contain"
+          src={mediaUrl}
+          alt={question.mediaCaption || "퀴즈 이미지"}
+        />
+        {question.mediaCaption ? (
+          <figcaption className="mt-2 text-sm font-semibold text-zinc-500">{question.mediaCaption}</figcaption>
+        ) : null}
+      </figure>
+    );
+  }
+
+  return null;
 }
 
 function StatusPill({ label, value, tone }: { label: string; value: string; tone: "teal" | "amber" | "rose" }) {
@@ -394,4 +441,23 @@ function getProjectRouteHref(route: string) {
   const parts = window.location.pathname.split("/").filter(Boolean);
   const projectBase = parts[0] === "workshop_2026" ? "/workshop_2026" : "";
   return `${projectBase}/${route}`;
+}
+
+function resolveQuizMediaUrl(url: string) {
+  if (/^(https?:|data:|blob:)/.test(url)) {
+    return url;
+  }
+
+  const parts = window.location.pathname.split("/").filter(Boolean);
+  const projectBase = parts[0] === "workshop_2026" ? "/workshop_2026" : "";
+
+  if (url.startsWith("/workshop_2026/")) {
+    return url;
+  }
+
+  if (url.startsWith("/")) {
+    return `${projectBase}${url}`;
+  }
+
+  return `${projectBase}/${url}`;
 }
